@@ -13,7 +13,7 @@ from werkzeug.serving import make_server
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "app"))
 
 # Kleine Nachbildung der TMDB- und Bücher-Schnittstellen
-STATE = {"tv": {}, "movie": {}, "find": {}, "search": [], "google": {}, "dnb": "", "igdb": [], "jf": {}, "ol_cover": False, "dnb_cover": False}
+STATE = {"tv": {}, "movie": {}, "find": {}, "search": [], "google": {}, "dnb": "", "igdb": [], "jf": {}, "ol_cover": False, "dnb_cover": False, "igdb_queries": [], "upc": {}}
 fake = Flask("fake")
 
 
@@ -84,6 +84,8 @@ def env(server, monkeypatch, tmp_path):
         STATE[k] = {}
     STATE["search"], STATE["dnb"], STATE["jf"] = [], "", {}
     STATE["ol_cover"] = STATE["dnb_cover"] = False
+    STATE["igdb_queries"], STATE["upc"] = [], {}
+    monkeypatch.setenv("UPC_BASE", server + "/upc")
     monkeypatch.setenv("OPENLIBRARY_COVERS", server + "/ol-covers")
     monkeypatch.setenv("DNB_COVERS", server + "/dnb-cover")
     monkeypatch.setenv("DATA_DIR", str(tmp_path))
@@ -164,6 +166,12 @@ def dnb_cover():
     return Response(_blank(), mimetype="image/png")
 
 
+@fake.get("/upc/lookup")
+def upc():
+    title = STATE["upc"].get(request.args["upc"])
+    return jsonify(items=[{"title": title}] if title else [])
+
+
 @fake.post("/oauth")
 def oauth():
     return jsonify(access_token="tok", expires_in=3600)
@@ -172,4 +180,5 @@ def oauth():
 @fake.post("/igdb/games")
 def igdb_games():
     assert request.headers["Authorization"] == "Bearer tok"
+    STATE["igdb_queries"].append(request.get_data(as_text=True).split('"')[1])
     return jsonify(STATE["igdb"])

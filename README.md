@@ -14,7 +14,7 @@ Selbst gehosteter Tracker für Serien, Animes, Filme, Bücher und Spiele. Mehrer
 | **Automatik** | Neue Folge: zurück nach Aktiv. Serie beendet und alles gesehen: Archiv. Neue Staffel angekündigt: aus dem Archiv nach Warten. |
 | **Filme** | Merkliste und Gesehen. |
 | **Bücher** | Mein Regal, Lese ich, Gelesen, Merkliste. Foto vom Strichcode oder Cover, Suche nach Titel oder ISBN, Warnung bei Doppelkauf. |
-| **Spiele** | Sammlung mit Exemplaren je Plattform (Format, Zustand, Preis, Kaufdatum, Standort), Durchgespielt-Status, Wunschliste, Statistik. |
+| **Spiele** | Sammlung mit Exemplaren je Plattform (Format, Zustand, Preis, Kaufdatum, Standort), Durchgespielt-Status, Wunschliste, Statistik. Strichcode-Scan mit lernender Zuordnung, Covererkennung als Rückfall. |
 | **Jellyfin** | Gesehene Folgen und Filme werden automatisch abgehakt. |
 
 Aktiv, Warten und Archiv sind nirgends gespeichert. Die App berechnet sie bei jedem Aufruf aus dem Fortschritt und den TMDB-Daten (`logic.py`). Laufende Serien werden alle 12 Stunden abgeglichen, beendete wöchentlich.

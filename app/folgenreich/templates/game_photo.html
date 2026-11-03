@@ -2,7 +2,7 @@
 {% block title %}Spiel eintragen{% endblock %}
 {% block content %}
 <h1>Spiel eintragen</h1>
-<p class="lead">Fotografiere die Vorderseite der Hülle. Der Titel wird gelesen und in der Spieledatenbank gesucht.{% if not igdb_ready %} Dafür fehlt noch der Zugang zu IGDB, von Hand geht es aber schon.{% endif %}</p>
+<p class="lead">Fotografiere am besten den Strichcode auf der Rückseite, gerade und nah. Bekannte Codes werden sofort erkannt, bei neuen hilft die Vorderseite oder eine kurze Titelsuche.{% if not igdb_ready %} Dafür fehlt noch der Zugang zu IGDB, von Hand geht es aber schon.{% endif %}</p>
 {% if igdb_ready %}
 <label class="shutter">
   <input type="file" accept="image/*" capture="environment" id="book-photo" data-url="/api/spiel-foto">

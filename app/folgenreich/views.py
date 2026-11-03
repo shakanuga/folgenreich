@@ -13,6 +13,7 @@ from flask import (Blueprint, Response, abort, current_app, flash, g, jsonify, r
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from . import books, db, igdb, importer, jellyfin, jellyfin_history, logic, sync, tmdb
+from . import games as games_rec
 
 bp = Blueprint("main", __name__)
 _fails = defaultdict(list)
@@ -220,24 +221,50 @@ def game_photo():
                            igdb_ready=igdb.configured())
 
 
+def _game_answer(results=(), query=None, error=None, ean=None, how=None, platform=None, known=None):
+    return render_template("_game_result.html", results=_decorate_games(list(results)), query=query, error=error, ean=ean,
+                           how=how, platform=platform, known=known, formats=logic.FORMATS)
+
+
+def _game_by_ean(ean):
+    """Wertet einen Strichcode aus: gelernte Zuordnung, dann Produktdatenbank."""
+    hit = games_rec.known_ean(ean)
+    if hit:
+        return _game_answer(ean=ean, how="known", known=hit, platform=hit["platform"])
+    name = games_rec.lookup_ean(ean)
+    query = games_rec.clean_title(name) if name else None
+    results, error = [], None
+    if query:
+        try:
+            results = igdb.search(query)
+        except igdb.IgdbError as e:
+            error = str(e)
+    return _game_answer(results, query, error, ean, "barcode", games_rec.detect_platform(name))
+
+
 @bp.post("/api/spiel-foto")
 @login_required
 def api_game_photo():
+    ean = re.sub(r"\D", "", request.form.get("ean", ""))
+    if len(ean) == 13:
+        return _game_by_ean(ean)
     f = request.files.get("photo")
     if not f:
         return jsonify(error="Es kam kein Foto an."), 400
     try:
-        query = books.query_from_text(books.ocr(books.load_photo(f.read())))
+        img = books.load_photo(f.read())
     except Exception:
         return jsonify(error="Dieses Bildformat lässt sich nicht lesen. Versuche ein JPEG."), 400
-    results, error = [], None
-    if query:
-        try:
-            results = _decorate_games(igdb.search(query))
-        except igdb.IgdbError as e:
-            error = str(e)
-    return render_template("_game_result.html", results=results, query=query, error=error,
-                           formats=logic.FORMATS)
+    ean = books.read_code(img)
+    if ean:
+        return _game_by_ean(ean)
+    lines = games_rec.ocr_lines(img)
+    results, query, error = [], "", None
+    try:
+        results, query = games_rec.recognise(lines)
+    except igdb.IgdbError as e:
+        error = str(e)
+    return _game_answer(results, query, error, how="cover", platform=games_rec.detect_platform(" ".join(lines)))
 
 
 @bp.post("/spiel-von-hand")
@@ -489,8 +516,8 @@ def search():
                 r["mine"] = _mine(r["type"], r["ext_id"])
         except tmdb.TmdbError as e:
             error = str(e)
-    return render_template("search.html", q=q, art=art, results=results, error=error,
-                           igdb_ready=igdb.configured(), formats=logic.FORMATS)
+    return render_template("search.html", q=q, art=art, results=results, error=error, ean=request.args.get("ean"),
+                           platform=None, igdb_ready=igdb.configured(), formats=logic.FORMATS)
 
 
 @bp.post("/hinzufuegen")
@@ -528,10 +555,13 @@ def _add_game(data, action, form):
                  (key, "igdb" if data.get("ext_id") else "manual", data["title"], data.get("year"), data.get("cover"),
                   data.get("overview"), ", ".join(data.get("genres") or []) or None))
     media_id = conn.execute("SELECT id FROM media WHERE type='game' AND ext_id=?", (key,)).fetchone()["id"]
-    logic.ensure_entry(uid, media_id, "planned" if action == "merken" else "backlog")
+    if action != "zuordnen":
+        logic.ensure_entry(uid, media_id, "planned" if action == "merken" else "backlog")
     conn.commit()
     if action == "sammlung":
         logic.save_copy(uid, media_id, form)
+    if len(form.get("ean", "")) == 13:
+        games_rec.remember_ean(form["ean"], media_id, form.get("platform"))
     return media_id
 
 

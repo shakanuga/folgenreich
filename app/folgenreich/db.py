@@ -90,6 +90,12 @@ CREATE TABLE IF NOT EXISTS copies (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_copies_user ON copies(user_id, media_id);
+-- Gelernte Strichcodes von Spielen, gilt für alle Konten
+CREATE TABLE IF NOT EXISTS ean_map (
+  ean TEXT PRIMARY KEY,
+  media_id INTEGER NOT NULL REFERENCES media(id) ON DELETE CASCADE,
+  platform TEXT
+);
 CREATE TABLE IF NOT EXISTS hook_alias (
   name TEXT PRIMARY KEY COLLATE NOCASE,
   media_id INTEGER NOT NULL REFERENCES media(id) ON DELETE CASCADE

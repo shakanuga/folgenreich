@@ -7,10 +7,13 @@
     <b>{{ r.title }}</b>
     <small>{{ r.year or 'Jahr unbekannt' }}{% if r.genres %}, {{ r.genres[:2]|join(', ') }}{% endif %}</small>
     {% if r.mine %}<a class="btn small have" href="/m/{{ r.mine.id }}#exemplare">Hast du schon{% if r.have %}: {{ r.have|join(', ') }}{% else %} auf der Wunschliste{% endif %}</a>
+      {% if ean %}<form method="post" action="/hinzufuegen" class="quick">
+        <input type="hidden" name="type" value="game"><input type="hidden" name="payload" value="{{ r.payload }}"><input type="hidden" name="ean" value="{{ ean }}">
+        <button class="link" name="action" value="zuordnen">Strichcode diesem Spiel zuordnen</button></form>{% endif %}
     {% else %}
     <form method="post" action="/hinzufuegen" class="quick">
-      <input type="hidden" name="type" value="game"><input type="hidden" name="payload" value="{{ r.payload }}">
-      <select name="platform" aria-label="Plattform">{% for p in r.platforms or ['PC'] %}<option>{{ p }}</option>{% endfor %}</select>
+      <input type="hidden" name="type" value="game"><input type="hidden" name="payload" value="{{ r.payload }}"><input type="hidden" name="ean" value="{{ ean or '' }}">
+      <select name="platform" aria-label="Plattform">{% for p in r.platforms or ['PC'] %}<option {% if p == platform %}selected{% endif %}>{{ p }}</option>{% endfor %}</select>
       <select name="format" aria-label="Format">{% for f in formats %}<option>{{ f }}</option>{% endfor %}</select>
       <button class="btn small primary" name="action" value="sammlung">In die Sammlung</button>
       <button class="btn small" name="action" value="merken">Wünschen</button>

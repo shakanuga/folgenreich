@@ -117,12 +117,12 @@ if (photo) photo.addEventListener('change', async () => {
   out.innerHTML = '<p class="lead">Foto wird gelesen …</p>';
   const form = new FormData();
   try {
-    if ('BarcodeDetector' in window && !photo.dataset.url) {
+    if ('BarcodeDetector' in window) {
       const hit = await new BarcodeDetector({ formats: ['ean_13'] }).detect(await createImageBitmap(file));
-      if (hit[0]) form.set('isbn', hit[0].rawValue);
+      if (hit[0]) form.set(photo.dataset.url ? 'ean' : 'isbn', hit[0].rawValue);
     }
   } catch { /* der Server versucht es selbst */ }
-  if (!form.has('isbn')) form.set('photo', file);
+  if (!form.has('isbn') && !form.has('ean')) form.set('photo', file);
   try {
     const r = await fetch(photo.dataset.url || '/api/buch-foto', { method: 'POST', body: form });
     if (r.ok) out.innerHTML = await r.text();

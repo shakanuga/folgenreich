@@ -277,7 +277,7 @@ def _decode_runs(runs, quiet_before, quiet_after):
     if parity not in PARITY:
         return None
     code = str(PARITY.index(parity)) + "".join(map(str, digits))
-    return clean_isbn(code)
+    return code if code[-1] == _check13(code[:12]) else None
 
 
 def _rows(img):
@@ -288,7 +288,7 @@ def _rows(img):
         yield px[y * w:(y + 1) * w]
 
 
-def _scan(img):
+def _scan(img, accept):
     w = img.size[0]
     hits = {}
     for line in _rows(img):
@@ -317,6 +317,7 @@ def _scan(img):
                 before = widths[i - 1] if i else widths[0] * 9
                 after = widths[i + 59] if i + 59 < len(runs) else widths[-1] * 9
                 hit = _decode_runs(widths[i:i + 59], before, after)
+                hit = accept(hit) if hit else None
                 if hit:
                     hits[hit] = hits.get(hit, 0) + 1
                     if hits[hit] >= 2:  # zwei Zeilen müssen übereinstimmen
@@ -325,14 +326,19 @@ def _scan(img):
 
 
 def read_barcode(image):
-    """Sucht einen ISBN-Strichcode (EAN-13). Probiert Größen und Drehungen durch."""
+    """Sucht einen ISBN-Strichcode."""
+    return read_code(image, clean_isbn)
+
+
+def read_code(image, accept=lambda code: code):
+    """Sucht einen EAN-13-Strichcode. Probiert Größen und Drehungen durch."""
     gray = ImageOps.autocontrast(image.convert("L"))
     for width in (1600, 1000, 2400):
         scaled = gray.copy()
         scaled.thumbnail((width, width))
         for angle in (0, 90, 180, 270, 8, -8, 15, -15):
             rotated = scaled if angle == 0 else scaled.rotate(angle, expand=True, fillcolor=255)
-            hit = _scan(rotated)
+            hit = _scan(rotated, accept)
             if hit:
                 return hit
     return None

@@ -1,3 +1,21 @@
-{% if error %}<p class="empty">{{ error }} Trag das Spiel unten von Hand ein.</p>
-{% elif results %}<p class="lead">Das Cover passt am ehesten zu diesen Spielen:</p>{% include '_game_list.html' %}
-{% else %}<p class="empty">Auf dem Foto war kein Titel lesbar. Fotografiere die Vorderseite gerade und nah, oder trag das Spiel unten von Hand ein.</p>{% endif %}
+{% import '_macros.html' as ui %}
+{% if known %}
+<p class="lead">Dieser Strichcode gehört zu:</p>
+<ul class="results"><li>
+  {{ ui.poster(known, 'small') }}
+  <div><b>{{ known.title }}</b>{% if known.platform %}<small>{{ known.platform }}</small>{% endif %}
+  <a class="btn small primary" href="/m/{{ known.media_id }}#exemplare">Spiel öffnen</a></div>
+</li></ul>
+{% elif error %}<p class="empty">{{ error }} Trag das Spiel unten von Hand ein.</p>
+{% elif results %}
+<p class="lead">{% if how == 'barcode' %}Über den Strichcode gefunden:{% else %}Das Cover passt am ehesten zu diesen Spielen:{% endif %}</p>
+{% include '_game_list.html' %}
+{% elif ean %}<p class="empty">Strichcode {{ ean }} erkannt, aber in der Produktdatenbank nicht gefunden. Such das Spiel unten einmal, dann merkt sich die App den Code.</p>
+{% else %}<p class="empty">Auf dem Foto war kein Titel lesbar. Versuch den Strichcode auf der Rückseite oder such den Titel hier.</p>{% endif %}
+{% if not known %}
+<form class="searchbar" method="get" action="/suche">
+  <input type="hidden" name="art" value="spiel">{% if ean %}<input type="hidden" name="ean" value="{{ ean }}">{% endif %}
+  <input type="search" name="q" value="{{ query or '' }}" placeholder="Spieletitel" aria-label="Spieletitel">
+  <button class="btn">Suchen</button>
+</form>
+{% endif %}
