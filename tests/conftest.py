@@ -11,7 +11,7 @@ from werkzeug.serving import make_server
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "app"))
 
 # Kleine Nachbildung der TMDB- und Bücher-Schnittstellen
-STATE = {"tv": {}, "movie": {}, "find": {}, "search": [], "google": {}, "dnb": "", "igdb": []}
+STATE = {"tv": {}, "movie": {}, "find": {}, "search": [], "google": {}, "dnb": "", "igdb": [], "jf": {}}
 fake = Flask("fake")
 
 
@@ -80,13 +80,15 @@ def server():
 def env(server, monkeypatch, tmp_path):
     for k in ("tv", "movie", "find", "google"):
         STATE[k] = {}
-    STATE["search"], STATE["dnb"] = [], ""
+    STATE["search"], STATE["dnb"], STATE["jf"] = [], "", {}
     monkeypatch.setenv("DATA_DIR", str(tmp_path))
     monkeypatch.setenv("TMDB_API_KEY", "testkey")
     monkeypatch.setenv("TMDB_BASE", server + "/3")
     monkeypatch.setenv("GOOGLE_BOOKS_BASE", server + "/books")
     monkeypatch.setenv("OPENLIBRARY_BASE", server + "/ol")
     monkeypatch.setenv("DNB_BASE", server + "/dnb")
+    monkeypatch.setenv("JELLYFIN_URL", server + "/jf/")
+    monkeypatch.setenv("JELLYFIN_API_KEY", "key")
     monkeypatch.setenv("IGDB_ID", "id")
     monkeypatch.setenv("IGDB_SECRET", "secret")
     monkeypatch.setenv("IGDB_AUTH", server + "/oauth")
@@ -113,6 +115,21 @@ def other(app, admin, name="nutzer2"):
     c = app.test_client()
     c.post("/anmelden", data={"username": name, "password": pw})
     return c
+
+
+@fake.get("/jf/Users")
+def jf_users():
+    if "MediaBrowser Token" not in request.headers.get("Authorization", ""):
+        return "", 401
+    return jsonify([{"Name": "Nutzer1", "Id": "u1"}])
+
+
+@fake.get("/jf/Items")
+def jf_items():
+    kind = request.args["IncludeItemTypes"]
+    rows = STATE["jf"].get(kind, [])
+    start, limit = int(request.args["StartIndex"]), int(request.args["Limit"])
+    return jsonify(Items=rows[start:start + limit], TotalRecordCount=len(rows))
 
 
 @fake.post("/oauth")

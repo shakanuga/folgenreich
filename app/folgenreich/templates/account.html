@@ -11,12 +11,37 @@
     <button class="btn primary">Stand übernehmen</button>
   </form>
 </section>
-<section><h2>Jellyfin</h2>
+<section id="jellyfin"><h2>Jellyfin</h2>
   <p>Gesehene Folgen werden automatisch abgehakt, wenn dein Name hier zu Jellyfin passt.</p>
   <form method="post" action="/konto/profil" class="stack">
     <label>Dein Name in Jellyfin <input name="jellyfin_name" value="{{ user.jellyfin_name or '' }}" placeholder="{{ user.username }}"></label>
     <button class="btn">Speichern</button>
   </form>
+  <h3>Bisher Gesehenes übernehmen</h3>
+  {% if not jf_ready %}
+  <p class="muted">Dafür fehlen beim Container <code>JELLYFIN_URL</code> und <code>JELLYFIN_API_KEY</code>.</p>
+  {% elif jf and jf.state == 'running' %}
+  <p data-refresh>Dein Jellyfin-Verlauf wird geprüft. Das kann einige Minuten dauern, du kannst die Seite verlassen.</p>
+  {% elif jf and jf.state == 'error' %}
+  <p class="danger">{{ jf.error }}</p>
+  <form method="post" action="/konto/jellyfin/pruefen"><button class="btn">Erneut prüfen</button></form>
+  {% elif jf and jf.state == 'ready' %}
+  <p><b>{{ jf.episodes|num }} Folgen in {{ jf.series|length|num }} Serien und {{ jf.movies|length|num }} Filme</b> fehlen hier noch{% if jf.new_entries %}, {{ jf.new_entries|num }} Serien kämen neu in deine Listen{% endif %}.</p>
+  {% if jf.series or jf.movies %}
+  <details class="manual"><summary>Liste ansehen</summary>
+    <ul class="plain-list">{% for s in jf.series %}<li><span>{{ s.title }}{% if s.new_entry %} <small>neu</small>{% endif %}</span><span>{{ s.episodes|length }}</span></li>{% endfor %}
+    {% for m in jf.movies %}<li><span>{{ m.title }} <small>Film</small></span></li>{% endfor %}</ul>
+  </details>{% endif %}
+  {% if jf.problems %}<details class="manual"><summary>{{ jf.problems|length }} nicht übernehmbar</summary>
+    <ul class="log">{% for p in jf.problems %}<li>{{ p }}</li>{% endfor %}</ul></details>{% endif %}
+  <div class="row">
+    {% if jf.series or jf.movies %}<form method="post" action="/konto/jellyfin/uebernehmen"><button class="btn primary">Ergänzen</button></form>{% endif %}
+    <form method="post" action="/konto/jellyfin/verwerfen"><button class="btn">Verwerfen</button></form>
+  </div>
+  {% else %}
+  <p>Vergleicht deinen Jellyfin-Verlauf mit deinen Listen. Du siehst zuerst, was fehlt, entfernt wird nichts.</p>
+  <form method="post" action="/konto/jellyfin/pruefen"><button class="btn">Jellyfin prüfen</button></form>
+  {% endif %}
 </section>
 <section><h2>Passwort ändern</h2>
   <form method="post" action="/konto/passwort" class="stack">

@@ -33,6 +33,7 @@ def create_app(background=True):
     app.jinja_env.filters["euro"] = lambda c: f"{c / 100:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") + " €"
     app.jinja_env.globals["pos_label"] = logic.pos_label
     app.jinja_env.globals["waiting_label"] = logic.waiting_label
+    app.config["BACKGROUND"] = background
     from .views import bp
     app.register_blueprint(bp)
     if background:

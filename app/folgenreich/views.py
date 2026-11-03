@@ -12,7 +12,7 @@ from flask import (Blueprint, Response, abort, current_app, flash, g, jsonify, r
                    send_from_directory, session, url_for)
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from . import books, db, igdb, importer, jellyfin, logic, sync, tmdb
+from . import books, db, igdb, importer, jellyfin, jellyfin_history, logic, sync, tmdb
 
 bp = Blueprint("main", __name__)
 _fails = defaultdict(list)
@@ -617,6 +617,8 @@ def account():
                 "counts": conn.execute("""SELECT COUNT(*) AS total, SUM(synced_at IS NULL) AS waiting,
                     SUM(sync_error IS NOT NULL) AS errors FROM media WHERE source='tmdb'""").fetchone(),
                 "last_error": conn.execute("SELECT title,sync_error FROM media WHERE sync_error IS NOT NULL LIMIT 1").fetchone()}
+    data["jf"] = jellyfin_history.status(g.user["id"])
+    data["jf_ready"] = jellyfin_history.configured()
     return render_template("account.html", **data)
 
 
@@ -629,6 +631,31 @@ def save_profile():
     conn.commit()
     flash("Gespeichert.")
     return redirect(url_for("main.account"))
+
+
+@bp.post("/konto/jellyfin/pruefen")
+@login_required
+def jellyfin_check():
+    if jellyfin_history.configured():
+        name = g.user["jellyfin_name"] or g.user["username"]
+        jellyfin_history.start(g.user["id"], name, background=current_app.config.get("BACKGROUND", True))
+    return redirect(url_for("main.account") + "#jellyfin")
+
+
+@bp.post("/konto/jellyfin/uebernehmen")
+@login_required
+def jellyfin_apply():
+    done = jellyfin_history.apply(g.user["id"])
+    if done:
+        flash(f"Aus Jellyfin ergänzt: {done['episodes']} Folgen und {len(done['movies'])} Filme.")
+    return redirect(url_for("main.account") + "#jellyfin")
+
+
+@bp.post("/konto/jellyfin/verwerfen")
+@login_required
+def jellyfin_discard():
+    jellyfin_history.discard(g.user["id"])
+    return redirect(url_for("main.account") + "#jellyfin")
 
 
 @bp.post("/konto/passwort")

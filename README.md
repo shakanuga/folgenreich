@@ -38,6 +38,7 @@ chown 99:100 /mnt/user/appdata/folgenreich
 | `TMDB_API_KEY` | TMDB-Schlüssel, API-Key oder Lese-Token |
 | `IGDB_ID`, `IGDB_SECRET` | optional, für die Spielesuche |
 | `GOOGLE_BOOKS_API_KEY` | optional, falls Google ohne Schlüssel drosselt |
+| `JELLYFIN_URL`, `JELLYFIN_API_KEY` | optional, um bisher Gesehenes aus Jellyfin zu übernehmen |
 | `COOKIE_SECURE` | `1`, wenn die App nur über HTTPS läuft |
 
 Ohne fertiges Image geht es auch direkt aus dem Ordner: `docker build -t folgenreich .`
@@ -48,9 +49,12 @@ Ohne fertiges Image geht es auch direkt aus dem Ordner: `docker build -t folgenr
 
 **5. Jellyfin.** Webhook-Plugin installieren und den Anweisungen im Konto unter „Jellyfin einrichten“ folgen.
 
+**6. Bisher Gesehenes aus Jellyfin.** Im Konto „Jellyfin prüfen“ wählen. Du siehst zuerst, was fehlt, und ergänzt es dann per Klick. Entfernt wird nichts.
+
 ## Schlüssel
 
 - **TMDB:** kostenlos unter themoviedb.org in den Kontoeinstellungen unter API.
+- **Jellyfin:** im Dashboard unter API-Schlüssel anlegen. `JELLYFIN_URL` ist die Adresse, unter der der Container Jellyfin erreicht.
 - **IGDB:** kostenlos über eine Anwendung in der Twitch-Developer-Konsole, Client-ID und Secret eintragen. Ohne IGDB lassen sich Spiele von Hand eintragen.
 
 ## Daten und Sicherung

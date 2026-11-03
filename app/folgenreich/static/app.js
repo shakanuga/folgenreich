@@ -131,3 +131,5 @@ if (photo) photo.addEventListener('change', async () => {
   } catch { out.innerHTML = ''; toast('Der Server ist gerade nicht erreichbar.'); }
   photo.value = '';
 });
+
+if (document.querySelector('[data-refresh]')) setTimeout(() => location.reload(), 5000);

@@ -9,6 +9,8 @@ services:
       TMDB_API_KEY: "hier-deinen-schluessel-eintragen"
       IGDB_ID: ""
       IGDB_SECRET: ""
+      JELLYFIN_URL: ""
+      JELLYFIN_API_KEY: ""
       TZ: Europe/Berlin
     volumes:
       - /mnt/user/appdata/folgenreich:/data
