@@ -1,0 +1,21 @@
+{% import '_macros.html' as ui %}
+<ul class="results">
+{% for r in results %}
+<li>
+  {{ ui.poster({'title': r.title, 'poster': r.cover}, 'small') }}
+  <div>
+    <b>{{ r.title }}</b>
+    <small>{{ r.year or 'Jahr unbekannt' }}{% if r.genres %}, {{ r.genres[:2]|join(', ') }}{% endif %}</small>
+    {% if r.mine %}<a class="btn small have" href="/m/{{ r.mine.id }}#exemplare">Hast du schon{% if r.have %}: {{ r.have|join(', ') }}{% else %} auf der Wunschliste{% endif %}</a>
+    {% else %}
+    <form method="post" action="/hinzufuegen" class="quick">
+      <input type="hidden" name="type" value="game"><input type="hidden" name="payload" value="{{ r.payload }}">
+      <select name="platform" aria-label="Plattform">{% for p in r.platforms or ['PC'] %}<option>{{ p }}</option>{% endfor %}</select>
+      <select name="format" aria-label="Format">{% for f in formats %}<option>{{ f }}</option>{% endfor %}</select>
+      <button class="btn small primary" name="action" value="sammlung">In die Sammlung</button>
+      <button class="btn small" name="action" value="merken">Wünschen</button>
+    </form>{% endif %}
+  </div>
+</li>
+{% endfor %}
+</ul>

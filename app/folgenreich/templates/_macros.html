@@ -1,0 +1,22 @@
+{% macro poster(m, cls='') %}
+<span class="poster {{ cls }}" data-title="{{ m.title }}">
+  {% if m.poster %}<img src="{{ m.poster }}" alt="" loading="lazy">{% endif %}
+  <span class="poster-fallback">{{ m.title }}</span>
+</span>
+{% endmacro %}
+
+{% macro strip(cells, label) %}
+{% if cells %}<span class="strip {{ 'dense' if cells|length > 30 }}" role="img" aria-label="{{ label }}">{% for c in cells %}<i class="{{ c }}"></i>{% endfor %}</span>{% endif %}
+{% endmacro %}
+
+{% macro tabs(labels, data, tab, base) %}
+<nav class="tabs" aria-label="Listen">
+  {% for key, label in labels.items() %}
+  <a href="{{ base }}/{{ key }}" {% if key == tab %}aria-current="page"{% endif %}>{{ label }} <span>{{ data[key]|length }}</span></a>
+  {% endfor %}
+</nav>
+{% endmacro %}
+
+{% macro filter_box(ph) %}
+<label class="filter"><span class="vh">Liste filtern</span><input type="search" placeholder="{{ ph }}" data-filter autocomplete="off"></label>
+{% endmacro %}

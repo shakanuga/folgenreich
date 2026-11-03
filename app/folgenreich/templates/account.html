@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+{% block title %}Konto{% endblock %}
+{% block content %}
+<h1>Konto</h1>
+<p class="lead">Angemeldet als {{ user.username }}.</p>
+<div class="panels">
+<section id="umzug"><h2>Von Yamtrack umziehen</h2>
+  <p>In Yamtrack unter Import den CSV-Export herunterladen und hier hochladen. Du kannst das gefahrlos wiederholen.</p>
+  <form method="post" action="/konto/import" enctype="multipart/form-data" class="stack">
+    <label>CSV-Datei <input type="file" name="file" accept=".csv,text/csv" required></label>
+    <button class="btn primary">Stand übernehmen</button>
+  </form>
+</section>
+<section><h2>Jellyfin</h2>
+  <p>Gesehene Folgen werden automatisch abgehakt, wenn dein Name hier zu Jellyfin passt.</p>
+  <form method="post" action="/konto/profil" class="stack">
+    <label>Dein Name in Jellyfin <input name="jellyfin_name" value="{{ user.jellyfin_name or '' }}" placeholder="{{ user.username }}"></label>
+    <button class="btn">Speichern</button>
+  </form>
+</section>
+<section><h2>Passwort ändern</h2>
+  <form method="post" action="/konto/passwort" class="stack">
+    <label>Aktuelles Passwort <input type="password" name="old" autocomplete="current-password" required></label>
+    <label>Neues Passwort <input type="password" name="new" autocomplete="new-password" required minlength="8"></label>
+    <button class="btn">Passwort ändern</button>
+  </form>
+</section>
+<section><h2>Deine Daten</h2>
+  <p><a class="btn" href="/konto/export.json">Alles als JSON herunterladen</a></p>
+  <form method="post" action="/abmelden"><button class="btn">Abmelden</button></form>
+</section>
+{% if user.is_admin %}
+<section><h2>Konten</h2>
+  <ul class="plain-list">{% for u in users %}
+    <li><span>{{ u.username }}{% if u.is_admin %} <small>verwaltet</small>{% endif %}</span>
+      {% if u.id != user.id %}<span class="row">
+      <form method="post" action="/konto/nutzer/{{ u.id }}/passwort"><button class="link">Neues Passwort</button></form>
+      <form method="post" action="/konto/nutzer/{{ u.id }}/loeschen" data-confirm="Konto {{ u.username }} samt Listen löschen?"><button class="link danger">Löschen</button></form>
+      </span>{% endif %}</li>
+  {% endfor %}</ul>
+  <form method="post" action="/konto/nutzer" class="inline-form"><label><span class="vh">Name</span><input name="username" placeholder="Name" required></label><button class="btn">Konto anlegen</button></form>
+</section>
+<section><h2>Abgleich mit TMDB</h2>
+  {% if tmdb_ready %}
+  <p>{{ counts.total or 0 }} Titel im Katalog{% if counts.waiting %}, {{ counts.waiting }} warten auf den ersten Abgleich{% endif %}{% if counts.errors %}, {{ counts.errors }} mit Fehler{% endif %}.</p>
+  {% if last_error %}<p class="muted">Letzter Fehler bei {{ last_error.title }}: {{ last_error.sync_error }}</p>{% endif %}
+  <form method="post" action="/konto/abgleich"><button class="btn">Jetzt abgleichen</button></form>
+  {% else %}<p>Es ist kein Schlüssel eingetragen. Trage ihn beim Container als <code>TMDB_API_KEY</code> ein.</p>{% endif %}
+</section>
+<section class="wide"><h2>Jellyfin einrichten</h2>
+  <ol>
+    <li>Im Jellyfin-Plugin Webhook „Add Generic Destination“ wählen.</li>
+    <li>Diese Adresse als Webhook Url eintragen: <input class="copy" readonly value="{{ hook_url }}" aria-label="Webhook-Adresse"></li>
+    <li>Bei Notification Type nur „Playback Stop“ ankreuzen, bei Item Type „Movies“ und „Episodes“, dazu „Send All Properties“.</li>
+  </ol>
+  <p class="muted">Die Adresse ist wie ein Passwort. Wiedergaben von Personen ohne Konto hier werden ignoriert.</p>
+  {% if log %}<h3>Zuletzt empfangen</h3><ul class="log">{% for l in log %}<li class="{{ 'bad' if not l.ok }}"><time>{{ l.at }}</time> {{ l.text }}</li>{% endfor %}</ul>{% endif %}
+</section>
+{% endif %}
+</div>
+<p class="muted small-print">Dieses Produkt nutzt die TMDB-API, ist aber nicht von TMDB unterstützt oder zertifiziert. Spieledaten von IGDB, Buchdaten von Google Books, Open Library und der Deutschen Nationalbibliothek.</p>
+{% endblock %}

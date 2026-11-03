@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block title %}Spiel eintragen{% endblock %}
+{% block content %}
+<h1>Spiel eintragen</h1>
+<p class="lead">Fotografiere die Vorderseite der Hülle. Der Titel wird gelesen und in der Spieledatenbank gesucht.{% if not igdb_ready %} Dafür fehlt noch der Zugang zu IGDB, von Hand geht es aber schon.{% endif %}</p>
+{% if igdb_ready %}
+<label class="shutter">
+  <input type="file" accept="image/*" capture="environment" id="book-photo" data-url="/api/spiel-foto">
+  <svg viewBox="0 0 24 24"><path d="M4 8h4l2-3h4l2 3h4v11H4z"/><circle cx="12" cy="13" r="3.500"/></svg>
+  <span>Foto aufnehmen</span>
+</label>
+{% endif %}
+<div id="photo-result" aria-live="polite"></div>
+<datalist id="plattformen">{% for p in platforms %}<option value="{{ p }}">{% endfor %}</datalist>
+<details class="manual" {% if not igdb_ready %}open{% endif %}>
+  <summary>Von Hand eintragen</summary>
+  <form method="post" action="/spiel-von-hand" enctype="multipart/form-data" class="stack">
+    <label>Titel <input name="title" required></label>
+    <label>Plattform <input name="platform" list="plattformen" required></label>
+    <label>Genre, mehrere mit Komma <input name="genres"></label>
+    <label>Erscheinungsjahr <input name="year" inputmode="numeric"></label>
+    <label>Foto als Cover <input type="file" name="photo" accept="image/*"></label>
+    <button class="btn primary">In die Sammlung</button>
+  </form>
+</details>
+{% endblock %}

@@ -1,0 +1,3 @@
+{% if error %}<p class="empty">{{ error }} Trag das Spiel unten von Hand ein.</p>
+{% elif results %}<p class="lead">Das Cover passt am ehesten zu diesen Spielen:</p>{% include '_game_list.html' %}
+{% else %}<p class="empty">Auf dem Foto war kein Titel lesbar. Fotografiere die Vorderseite gerade und nah, oder trag das Spiel unten von Hand ein.</p>{% endif %}

@@ -1,0 +1,8 @@
+{% if results %}
+<p class="lead">{% if how == 'cover' %}Das Cover passt am ehesten zu diesen Büchern:{% else %}Gefunden über die ISBN {{ isbn }}.{% endif %}</p>
+{% include '_book_list.html' %}
+{% elif isbn %}
+<p class="empty">Die ISBN {{ isbn }} ist erkannt, aber in keiner Bücherliste zu finden. Trag das Buch unten von Hand ein.</p>
+{% else %}
+<p class="empty">Auf dem Foto war nichts Lesbares. Fotografiere den Strichcode auf der Rückseite gerade und nah, oder trag das Buch unten von Hand ein.</p>
+{% endif %}

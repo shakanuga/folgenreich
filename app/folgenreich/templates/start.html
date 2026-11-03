@@ -1,0 +1,45 @@
+{% extends 'base.html' %}{% import '_macros.html' as ui %}
+{% block content %}
+{% if empty %}
+<section class="empty big">
+  <h1>Was schaust du gerade?</h1>
+  <p>Such eine Serie, einen Film oder ein Buch und trag es ein. Wenn du von Yamtrack kommst, übernimmst du deinen Stand im Konto.</p>
+  <p class="row"><a class="btn primary" href="/suche">Suchen</a> <a class="btn" href="/konto#umzug">Yamtrack übernehmen</a> <a class="btn" href="/buch-foto">Buch fotografieren</a></p>
+</section>
+{% else %}
+{% if hero %}
+<section class="hero" data-id="{{ hero.id }}">
+  <a href="/m/{{ hero.id }}" class="hero-poster">{{ ui.poster(hero) }}</a>
+  <div class="hero-text">
+    <h1><a href="/m/{{ hero.id }}">{{ hero.title }}</a></h1>
+    <p class="next"><b>{{ pos_label(hero.next_pos) if hero.next_pos }}</b> {{ hero.next_title or '' }}</p>
+    {{ ui.strip(hero.strip, 'Staffel ' ~ hero.next_season) }}
+    <p class="meta">{{ hero.open_eps }} {{ 'Folge' if hero.open_eps == 1 else 'Folgen' }} offen</p>
+    {% if hero.next_pos %}<button class="btn primary" data-next="{{ hero.id }}" data-reload>Als gesehen abhaken</button>{% endif %}
+  </div>
+</section>
+{% endif %}
+{% if active %}
+<section><h2>Weiterschauen</h2>
+<div class="cards">{% for it in active %}{% include '_card.html' %}{% endfor %}</div>
+{% if more %}<p><a href="/serien">Alle aktiven Serien ansehen</a></p>{% endif %}
+</section>
+{% endif %}
+{% if soon %}
+<section><h2>Bald neu</h2>
+<ol class="soon">
+{% for s in soon %}<li><time>{{ s.air_date|dedate }}</time> <a href="/m/{{ s.id }}">{{ s.title }}</a> <span class="muted">{{ pos_label(s.season*100000+s.number) }}</span></li>{% endfor %}
+</ol></section>
+{% endif %}
+{% if reading %}
+<section><h2>Lese ich gerade</h2>
+<div class="shelf">{% for m in reading %}<a href="/m/{{ m.id }}" class="tile">{{ ui.poster(m) }}<span>{{ m.title }}</span></a>{% endfor %}</div>
+</section>
+{% endif %}
+{% if playing %}
+<section><h2>Spiele ich gerade</h2>
+<div class="shelf">{% for m in playing %}<a href="/m/{{ m.id }}" class="tile">{{ ui.poster(m) }}<span>{{ m.title }}</span></a>{% endfor %}</div>
+</section>
+{% endif %}
+{% endif %}
+{% endblock %}

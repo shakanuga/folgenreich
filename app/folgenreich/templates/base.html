@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1c1830">
+<title>{% block title %}Folgenreich{% endblock %}</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="{{ url_for('static', filename='icon-192.png') }}">
+<link rel="apple-touch-icon" href="{{ url_for('static', filename='icon-192.png') }}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&display=swap">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</head>
+<body>
+{% if user %}
+<header class="top">
+  <a class="brand" href="/">Folgenreich</a>
+  <nav class="main-nav" aria-label="Hauptmenü">
+    {% set p = request.path %}
+    <a href="/" {% if p == '/' %}aria-current="page"{% endif %}><svg viewBox="0 0 24 24"><path d="M4 11 12 4l8 7v9h-5v-6H9v6H4z"/></svg>Start</a>
+    <a href="/serien" {% if p.startswith('/serien') %}aria-current="page"{% endif %}><svg viewBox="0 0 24 24"><path d="M3 7h18v12H3zM8 3l4 4 4-4"/></svg>Serien</a>
+    <a href="/anime" {% if p.startswith('/anime') %}aria-current="page"{% endif %}><svg viewBox="0 0 24 24"><path d="M12 3l2.6 5.8 6.4.7-4.8 4.2 1.4 6.3-5.6-3.3L6.400 20l1.400-6.300L3 9.500l6.400-.7z"/></svg>Anime</a>
+    <a href="/filme" {% if p.startswith('/filme') %}aria-current="page"{% endif %}><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4zM9 4v16M15 4v16M4 9h5M4 15h5M15 9h5M15 15h5"/></svg>Filme</a>
+    <a href="/buecher" {% if p.startswith('/buecher') or p.startswith('/buch') %}aria-current="page"{% endif %}><svg viewBox="0 0 24 24"><path d="M5 4h6v16H5zM11 4h4v16h-4zM15.500 5l3.500-.8 2.500 15-3.500.8z"/></svg>Bücher</a>
+    <a href="/spiele" {% if p.startswith('/spiel') %}aria-current="page"{% endif %}><svg viewBox="0 0 24 24"><path d="M7 8h10a5 5 0 0 1 5 5v2a3 3 0 0 1-5.500 1.600L15 15H9l-1.500 1.600A3 3 0 0 1 2 15v-2a5 5 0 0 1 5-5zM7 11v3M5.500 12.500h3M16 12h.01M18 14h.01"/></svg>Spiele</a>
+  </nav>
+  <a class="icon-link" href="/suche" aria-label="Suchen"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.500"/><path d="m16 16 5 5"/></svg></a>
+  <a class="icon-link" href="/konto" aria-label="Konto"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-5 4-7 8-7s7 2 8 7"/></svg></a>
+</header>
+{% endif %}
+<main class="{% block mainclass %}{% endblock %}">
+  {% with msgs = get_flashed_messages() %}{% for m in msgs %}<p class="flash" role="status">{{ m }}</p>{% endfor %}{% endwith %}
+  {% block content %}{% endblock %}
+</main>
+<div class="toast" id="toast" role="status" hidden></div>
+</body>
+</html>

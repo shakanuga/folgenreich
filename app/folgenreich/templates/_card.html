@@ -1,0 +1,16 @@
+{% import '_macros.html' as ui %}
+<article class="card {{ 'fresh' if it.fresh }} {{ 'paused' if it.sub == 'paused' }}" data-id="{{ it.id }}" data-title="{{ it.title }}">
+  <a class="card-link" href="/m/{{ it.id }}">{{ ui.poster(it) }}</a>
+  <div class="card-body">
+    <a class="card-title" href="/m/{{ it.id }}">{{ it.title }}</a>
+    {% if it.next_pos %}
+    <p class="next"><b>{{ pos_label(it.next_pos) }}</b> {{ it.next_title or '' }}</p>
+    {{ ui.strip(it.strip, 'Staffel ' ~ it.next_season) }}
+    <p class="meta">{% if it.fresh %}<span class="new">Neu</span> {% endif %}{{ it.open_eps }} {{ 'Folge' if it.open_eps == 1 else 'Folgen' }} offen{% if it.sub == 'paused' %}, pausiert{% endif %}</p>
+    {% elif it.sub == 'paused' %}<p class="meta">Pausiert</p>
+    {% else %}<p class="meta">Wird abgeglichen, sobald TMDB verbunden ist</p>{% endif %}
+  </div>
+  {% if it.next_pos %}
+  <button class="tick" data-next="{{ it.id }}" aria-label="{{ pos_label(it.next_pos) }} von {{ it.title }} als gesehen markieren"><svg viewBox="0 0 24 24"><path d="m5 13 5 5L20 7"/></svg></button>
+  {% endif %}
+</article>

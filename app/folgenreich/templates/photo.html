@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block title %}Buch fotografieren{% endblock %}
+{% block content %}
+<h1>Buch fotografieren</h1>
+<p class="lead">Am zuverlässigsten klappt es mit dem Strichcode auf der Rückseite. Ein Foto vom Cover geht auch, trifft aber nicht immer.</p>
+<label class="shutter">
+  <input type="file" accept="image/*" capture="environment" id="book-photo">
+  <svg viewBox="0 0 24 24"><path d="M4 8h4l2-3h4l2 3h4v11H4z"/><circle cx="12" cy="13" r="3.500"/></svg>
+  <span>Foto aufnehmen</span>
+</label>
+<div id="photo-result" aria-live="polite"></div>
+<details class="manual">
+  <summary>Von Hand eintragen</summary>
+  <form method="post" action="/buch-von-hand" enctype="multipart/form-data" class="stack">
+    <label>Titel <input name="title" required></label>
+    <label>Autor <input name="authors"></label>
+    <label>ISBN, falls vorhanden <input name="isbn" inputmode="numeric"></label>
+    <label>Foto als Cover <input type="file" name="photo" accept="image/*"></label>
+    <div class="row">
+      <button class="btn primary" name="action" value="regal">Ins Regal</button>
+      <button class="btn" name="action" value="gelesen">Gelesen</button>
+      <button class="btn" name="action" value="merken">Merken</button>
+    </div>
+  </form>
+</details>
+{% endblock %}

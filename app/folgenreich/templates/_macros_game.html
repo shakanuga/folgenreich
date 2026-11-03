@@ -1,0 +1,10 @@
+{% macro copy_fields(c, platforms, formats, conditions, media_id) %}
+<label class="full">Plattform <input name="platform" list="plattformen" value="{{ c.platform if c else '' }}" required></label>
+<label>Format <select name="format"><option value=""></option>{% for f in formats %}<option {% if c and c.format == f %}selected{% endif %}>{{ f }}</option>{% endfor %}</select></label>
+<label>Zustand <select name="condition"><option value=""></option>{% for f in conditions %}<option {% if c and c.condition == f %}selected{% endif %}>{{ f }}</option>{% endfor %}</select></label>
+<label>Kaufpreis in € <input name="price" inputmode="decimal" value="{{ ('%.2f' % (c.price_cents / 100))|replace('.', ',') if c and c.price_cents is not none }}"></label>
+<label>Gekauft am <input type="date" name="bought_on" value="{{ c.bought_on if c and c.bought_on }}"></label>
+<label>Edition <input name="edition" value="{{ c.edition if c and c.edition }}" placeholder="z. B. Steelbook"></label>
+<label>Standort <input name="location" value="{{ c.location if c and c.location }}" placeholder="z. B. Wohnzimmer"></label>
+<label class="check full"><input type="checkbox" name="complete" {% if c and c.complete %}checked{% endif %}> Komplett mit Hülle und Anleitung</label>
+{% endmacro %}

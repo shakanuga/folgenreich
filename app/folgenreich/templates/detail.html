@@ -1,0 +1,82 @@
+{% extends 'base.html' %}{% import '_macros.html' as ui %}
+{% block title %}{{ m.title }}{% endblock %}
+{% block content %}
+<section class="detail-head" {% if m.backdrop %}style="--bg:url('{{ m.backdrop }}')"{% endif %}>
+  {{ ui.poster(m) }}
+  <div>
+    <h1>{{ m.title }}</h1>
+    <p class="meta">{% if m.authors %}{{ m.authors }}, {% endif %}{{ m.year or '' }}{% if m.genres %}, {{ m.genres }}{% endif %}{% if m.original_title and m.original_title != m.title %}, {{ m.original_title }}{% endif %}{% if m.publisher %}, {{ m.publisher }}{% endif %}{% if m.pages %}, {{ m.pages }} Seiten{% endif %}</p>
+    {% if it %}<p class="status">{{ it.label }}</p>{% endif %}
+    {% if it and it.next_pos %}<button class="btn primary" data-next="{{ m.id }}" data-reload>{{ pos_label(it.next_pos) }} abhaken</button>{% endif %}
+  </div>
+</section>
+{% if m.overview %}<p class="overview">{{ m.overview }}</p>{% endif %}
+
+{% if m.type == 'tv' %}
+{% if seasons %}
+<section class="seasons" data-media="{{ m.id }}">
+<h2>Staffeln</h2>
+{% for s in seasons %}
+<details {% if s.number == open_season %}open{% endif %} id="s{{ s.number }}">
+  <summary>
+    <b>{{ 'Specials' if s.number == 0 else 'Staffel ' ~ s.number }}</b>
+    <span class="muted">{{ s.seen }} von {{ s.eps|length }}</span>
+    <span class="strip {{ 'dense' if s.eps|length > 30 }}" aria-hidden="true">{% for e in s.eps %}<i class="{{ 'w' if e.seen else ('o' if e.aired else 'f') }}"></i>{% endfor %}</span>
+  </summary>
+  <div class="season-actions">
+    {% if s.seen < s.aired %}<button class="btn small" data-season="{{ s.number }}" data-on="1">Ganze Staffel abhaken</button>{% endif %}
+    {% if s.seen %}<button class="btn small" data-season="{{ s.number }}" data-on="0">Staffel zurücksetzen</button>{% endif %}
+  </div>
+  <ol class="eps">
+    {% for e in s.eps %}
+    <li class="{{ 'seen' if e.seen }} {{ 'future' if not e.aired }}">
+      <button class="ep-check" {% if not e.aired and not e.seen %}disabled{% endif %} data-ep="{{ e.number }}" data-s="{{ s.number }}" aria-pressed="{{ 'true' if e.seen else 'false' }}" aria-label="Folge {{ e.number }} gesehen"><svg viewBox="0 0 24 24"><path d="m5 13 5 5L20 7"/></svg></button>
+      <div><b>{{ e.number }}. {{ e.title or 'Folge ' ~ e.number }}</b><small>{{ e.air }}{% if e.plays > 1 %}, {{ e.plays }}× gesehen{% endif %}</small></div>
+      {% if e.aired and not e.seen and s.number > 0 %}<button class="until" data-until="{{ e.pos }}">Bis hier</button>{% endif %}
+    </li>
+    {% endfor %}
+  </ol>
+</details>
+{% endfor %}
+</section>
+{% elif m.sync_error %}<p class="empty">{{ m.sync_error }}</p>
+{% endif %}
+{% endif %}
+
+{% if m.type == 'game' %}{% include '_copies.html' %}{% endif %}
+
+<section class="manage">
+<h2>{% if entry %}Dein Eintrag{% else %}Eintragen{% endif %}</h2>
+{% if m.type == 'game' and entry %}<p class="status">{{ states[entry.state] }}</p>{% endif %}
+<div class="row">
+{% macro st(state, label) %}<form method="post" action="/m/{{ m.id }}/status"><input type="hidden" name="state" value="{{ state }}"><button class="btn">{{ label }}</button></form>{% endmacro %}
+{% if m.type == 'tv' %}
+  {% if entry and entry.state in ('paused','dropped','planned','archived') %}{{ st('follow', 'Aktiv verfolgen') }}{% endif %}
+  {% if not entry or entry.state != 'planned' %}{{ st('planned', 'Auf die Merkliste') }}{% endif %}
+  {% if not entry or entry.state != 'paused' %}{{ st('paused', 'Pausieren') }}{% endif %}
+  {% if not entry or entry.state != 'archived' %}{{ st('archived', 'Archivieren') }}{% endif %}
+  {% if not entry or entry.state != 'dropped' %}{{ st('dropped', 'Abbrechen') }}{% endif %}
+  <form method="post" action="/m/{{ m.id }}/alles"><button class="btn">Alles abhaken</button></form>
+{% elif m.type == 'movie' %}
+  {% if not entry or entry.state != 'done' %}{{ st('done', 'Gesehen') }}{% endif %}
+  {% if not entry or entry.state != 'planned' %}{{ st('planned', 'Auf die Merkliste') }}{% endif %}
+{% elif m.type == 'game' %}
+  {% for key, label in {'playing': 'Spiele ich gerade', 'done': 'Durchgespielt', 'backlog': 'Noch nicht gespielt', 'dropped': 'Abgebrochen', 'planned': 'Auf die Wunschliste'}.items() %}
+    {% if not entry or entry.state != key %}{{ st(key, label) }}{% endif %}
+  {% endfor %}
+{% else %}
+  <form method="post" action="/m/{{ m.id }}/regal"><button class="btn">{{ 'Nicht mehr im Regal' if entry and entry.owned else 'Steht in meinem Regal' }}</button></form>
+  {% if not entry or entry.state != 'reading' %}{{ st('reading', 'Lese ich gerade') }}{% endif %}
+  {% if not entry or entry.state != 'done' %}{{ st('done', 'Gelesen') }}{% endif %}
+  {% if entry and entry.state != 'planned' %}{{ st('planned', 'Noch nicht gelesen') }}{% endif %}
+{% endif %}
+</div>
+<form class="note" method="post" action="/m/{{ m.id }}/notiz">
+  <label>Bewertung von 1 bis 10 <input name="rating" inputmode="decimal" value="{{ entry.rating|score if entry and entry.rating is not none }}"></label>
+  <label>Notizen <textarea name="notes" rows="3">{{ entry.notes if entry and entry.notes }}</textarea></label>
+  <button class="btn">Speichern</button>
+</form>
+{% if m.type == 'tv' %}<form method="post" action="/m/{{ m.id }}/art"><button class="link">{{ 'Als Serie einsortieren' if m.anime else 'Als Anime einsortieren' }}</button></form>{% endif %}
+{% if entry %}<form method="post" action="/m/{{ m.id }}/entfernen" data-confirm="{{ m.title }} samt Fortschritt entfernen?"><button class="link danger">Aus meinen Listen entfernen</button></form>{% endif %}
+</section>
+{% endblock %}

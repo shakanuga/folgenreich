@@ -1,0 +1,25 @@
+{% extends 'base.html' %}{% import '_macros.html' as ui %}
+{% block title %}{{ heading }}, {{ labels[tab] }}{% endblock %}
+{% block content %}
+<div class="head-row"><h1>{{ heading }}</h1>{% if books %}<a class="btn primary" href="/buch-foto">Buch fotografieren</a>{% endif %}</div>
+{{ ui.tabs(labels, tabs, tab, base) }}
+{% if items|length > 8 %}{{ ui.filter_box('In dieser Liste suchen') }}{% endif %}
+{% if tab == 'regal' and items %}
+<p class="lead">{{ items|length|num }} {{ 'Buch' if items|length == 1 else 'Bücher' }} im Regal, davon {{ unread|num }} ungelesen.</p>
+<div class="chips" role="group" aria-label="Regal filtern">
+  <button data-sub="" aria-pressed="true">Alle</button><button data-sub="unread" aria-pressed="false">Ungelesen</button><button data-sub="read" aria-pressed="false">Gelesen</button>
+</div>
+{% endif %}
+{% if items %}
+<div class="shelf" data-list>{% for m in items %}
+  <a href="/m/{{ m.id }}" class="tile" data-title="{{ m.title }} {{ m.authors or '' }}" data-sub="{{ 'read' if m.state == 'done' else 'unread' }}">
+    {{ ui.poster(m) }}<span>{{ m.title }}</span>
+    <small>{% if m.authors %}{{ m.authors }}{% elif m.type == 'movie' and m.release_date and m.release_date > '' %}{{ m.year or '' }}{% endif %}{% if books and tab == 'regal' and m.state == 'done' %}<br><b class="done">Gelesen</b>{% endif %}{% if m.rating is not none and not books %} {{ m.rating|score }} von 10{% endif %}</small>
+  </a>
+{% endfor %}</div>
+{% elif books %}
+<p class="empty">Noch nichts hier. Fotografiere ein Buch oder <a href="/suche?art=buch">such es über Titel oder ISBN</a>.</p>
+{% else %}
+<p class="empty">Noch nichts hier. <a href="/suche">Such einen Film.</a></p>
+{% endif %}
+{% endblock %}

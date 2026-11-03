@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% block mainclass %}gate{% endblock %}
+{% block content %}
+<div class="gate-box">
+  <h1>Folgenreich</h1>
+  <p class="lead">{% if first %}Lege das erste Konto an. Es verwaltet später auch die anderen.{% else %}Serien, Filme und Bücher an einem Ort.{% endif %}</p>
+  <form method="post" class="stack">
+    <label>Name <input name="username" autocomplete="username" required autofocus></label>
+    <label>Passwort <input type="password" name="password" autocomplete="{{ 'new-password' if first else 'current-password' }}" required></label>
+    <button class="btn primary">{{ 'Konto anlegen' if first else 'Anmelden' }}</button>
+  </form>
+</div>
+{% endblock %}

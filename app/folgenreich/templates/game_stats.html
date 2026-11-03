@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block title %}Spiele-Statistik{% endblock %}
+{% macro bars(title, rows, spent=False) %}
+{% if rows %}<section><h2>{{ title }}</h2>
+<ul class="bars">{% for b in rows %}
+  <li><span class="bar-label" title="{{ b.label }}">{{ b.label }}</span>
+  <span class="bar-track"><span class="bar" style="width:calc({{ b.pct * 0.6 }}%)"></span><span class="bar-value">{{ b.value|num }}{% if spent and b.spent %} <small>{{ b.spent|euro }}</small>{% endif %}</span></span></li>
+{% endfor %}</ul></section>{% endif %}
+{% endmacro %}
+{% block content %}
+<div class="head-row"><h1>Spiele</h1><a class="btn primary" href="/spiel-foto">Spiel eintragen</a></div>
+<nav class="tabs" aria-label="Listen">
+  {% for key, label in {'sammlung': 'Sammlung', 'spiele': 'Spiele ich', 'durch': 'Durch', 'wunschliste': 'Wunschliste'}.items() %}
+  <a href="/spiele/{{ key }}">{{ label }} <span>{{ tabs_data[key]|length }}</span></a>
+  {% endfor %}
+  <a href="/spiele/statistik" aria-current="page">Statistik</a>
+</nav>
+{% if s.copies %}
+<p class="stat-head">{{ s.games|num }} {{ 'Spiel' if s.games == 1 else 'Spiele' }} auf {{ s.platforms|length }} {{ 'Plattform' if s.platforms|length == 1 else 'Plattformen' }}{% if s.spent %}, zusammen {{ s.spent|euro }} bezahlt{% endif %}.</p>
+<p class="lead">{{ s.done_pct }} % durchgespielt, {{ s.unplayed|num }} noch nicht gespielt.{% if s.copies != s.games %} {{ s.copies|num }} Exemplare insgesamt.{% endif %}{% if s.priced and s.priced < s.copies %} Beim Preis zählen nur die {{ s.priced|num }} Exemplare mit eingetragenem Kaufpreis.{% endif %}{% if s.average %} Im Schnitt {{ s.average|euro }} pro Exemplar.{% endif %}</p>
+<div class="charts">
+  {{ bars('Nach Plattform', s.platforms, True) }}
+  {{ bars('Spielstand', s.states) }}
+  {{ bars('Nach Genre', s.genres) }}
+  {{ bars('Nach Erscheinungszeit', s.decades) }}
+  {{ bars('Gekauft pro Jahr', s.bought) }}
+  {{ bars('Nach Format', s.formats) }}
+  {{ bars('Nach Zustand', s.conditions) }}
+  {% if s.priciest %}<section><h2>Am teuersten</h2><ul class="bars">{% for r in s.priciest %}
+    <li><span class="bar-label"><a href="/m/{{ r.media_id }}">{{ r.title }}</a></span><span class="bar-value">{{ r.price_cents|euro }}, {{ r.platform }}</span></li>{% endfor %}</ul></section>{% endif %}
+</div>
+{% else %}<p class="empty">Sobald Spiele in deiner Sammlung stehen, siehst du hier, was sich wo stapelt. <a href="/spiel-foto">Spiel eintragen</a></p>{% endif %}
+{% endblock %}

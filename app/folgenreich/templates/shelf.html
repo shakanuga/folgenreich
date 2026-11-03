@@ -1,0 +1,31 @@
+{% extends 'base.html' %}{% import '_macros.html' as ui %}
+{% block title %}{{ heading }}, {{ labels[tab] }}{% endblock %}
+{% block content %}
+<h1>{{ heading }}</h1>
+{{ ui.tabs(labels, tabs, tab, base) }}
+{% if items|length > 8 %}{{ ui.filter_box('In dieser Liste suchen') }}{% endif %}
+{% if tab == 'aktiv' %}
+  {% if items %}<div class="cards" data-list>{% for it in items %}{% include '_card.html' %}{% endfor %}</div>
+  {% else %}<p class="empty">Hier ist nichts offen. <a href="/suche">Such dir etwas Neues.</a></p>{% endif %}
+{% elif tab == 'warten' %}
+  <p class="lead">Du bist aktuell. Sobald eine neue Folge erscheint, wandert die Serie zurück nach Aktiv.</p>
+  {% if items %}<ul class="rows" data-list>{% for it in items %}
+  <li data-title="{{ it.title }}"><a href="/m/{{ it.id }}">{{ ui.poster(it, 'small') }}<span><b>{{ it.title }}</b><small>{{ waiting_label(it) }}</small></span></a></li>
+  {% endfor %}</ul>{% else %}<p class="empty">Gerade wartest du auf keine Serie.</p>{% endif %}
+{% elif tab == 'archiv' %}
+  {% if items %}
+  <p class="lead">{{ stats.titles|num }} {{ 'Titel' }} und {{ stats.eps|num }} Folgen, die du gesehen hast.</p>
+  <div class="chips" role="group" aria-label="Archiv filtern">
+    <button data-sub="" aria-pressed="true">Alle</button><button data-sub="finished" aria-pressed="false">Fertig</button><button data-sub="dropped" aria-pressed="false">Abgebrochen</button>
+  </div>
+  <div class="shelf" data-list>{% for it in items %}
+    <a href="/m/{{ it.id }}" class="tile {{ 'dropped' if it.sub == 'dropped' }}" data-title="{{ it.title }}" data-sub="{{ it.sub }}">{{ ui.poster(it) }}<span>{{ it.title }}</span><small>{% if it.rating is not none %}{{ it.rating|score }} von 10{% endif %}{% if it.sub == 'dropped' %}{% if it.rating is not none %}, {% endif %}abgebrochen{% endif %}</small></a>
+  {% endfor %}</div>
+  {% else %}<p class="empty">Fertige Serien landen automatisch hier. Kommt eine neue Staffel, kehren sie von selbst zurück.</p>{% endif %}
+{% else %}
+  {% if items %}<div class="shelf" data-list>{% for it in items %}
+    <a href="/m/{{ it.id }}" class="tile" data-title="{{ it.title }}">{{ ui.poster(it) }}<span>{{ it.title }}</span><small>{% if it.next_air %}Start {{ it.next_air|dedate }}{% elif it.status == 'planned' %}Noch ohne Termin{% elif it.aired %}{{ it.aired }} Folgen{% endif %}</small></a>
+  {% endfor %}</div>
+  {% else %}<p class="empty">Merk dir hier, was du irgendwann sehen willst, auch Serien, die erst geplant sind. <a href="/suche">Jetzt suchen</a></p>{% endif %}
+{% endif %}
+{% endblock %}

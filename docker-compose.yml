@@ -1,0 +1,14 @@
+services:
+  folgenreich:
+    image: ghcr.io/shakanuga/folgenreich:latest
+    container_name: folgenreich
+    restart: unless-stopped
+    ports:
+      - "8765:8000"
+    environment:
+      TMDB_API_KEY: "hier-deinen-schluessel-eintragen"
+      IGDB_ID: ""
+      IGDB_SECRET: ""
+      TZ: Europe/Berlin
+    volumes:
+      - /mnt/user/appdata/folgenreich:/data

@@ -1,0 +1,46 @@
+{% extends 'base.html' %}{% import '_macros.html' as ui %}
+{% block title %}Suchen{% endblock %}
+{% block content %}
+<h1>Suchen</h1>
+<form class="searchbar" method="get" action="/suche">
+  <input type="hidden" name="art" value="{{ art }}">
+  <input type="search" name="q" value="{{ q }}" placeholder="{{ {'buch': 'Titel, Autor oder ISBN', 'spiel': 'Spieletitel'}.get(art, 'Serie, Anime oder Film') }}" aria-label="Suchbegriff" {% if not q %}autofocus{% endif %}>
+  <button class="btn primary">Suchen</button>
+</form>
+<nav class="tabs" aria-label="Suchbereich">
+  <a href="/suche?art=medien&q={{ q|urlencode }}" {% if art != 'buch' %}aria-current="page"{% endif %}>Serien und Filme</a>
+  <a href="/suche?art=buch&q={{ q|urlencode }}" {% if art == 'buch' %}aria-current="page"{% endif %}>Bücher</a>
+  <a href="/suche?art=spiel&q={{ q|urlencode }}" {% if art == 'spiel' %}aria-current="page"{% endif %}>Spiele</a>
+</nav>
+{% if art == 'buch' %}<p><a class="btn" href="/buch-foto">Buch fotografieren</a></p>{% endif %}
+{% if art == 'spiel' %}<p><a class="btn" href="/spiel-foto">Spiel fotografieren oder von Hand eintragen</a></p>{% endif %}
+{% if error %}<p class="empty">{{ error }}{% if user.is_admin and art != 'spiel' %} Der Schlüssel wird beim Container als TMDB_API_KEY eingetragen.{% endif %}</p>{% endif %}
+{% if q and not results and not error %}<p class="empty">Nichts gefunden. Probier eine andere Schreibweise{% if art == 'buch' %} oder <a href="/buch-foto">trag das Buch von Hand ein</a>{% endif %}.</p>{% endif %}
+{% if art == 'buch' %}
+  {% include '_book_list.html' %}
+{% elif art == 'spiel' %}
+  {% include '_game_list.html' %}
+{% else %}
+<ul class="results">
+{% for r in results %}
+<li>
+  {{ ui.poster(r, 'small') }}
+  <div>
+    <b>{{ r.title }}</b>
+    <small>{{ 'Film' if r.type == 'movie' else ('Anime' if r.anime else 'Serie') }}{% if r.year %}, {{ r.year }}{% endif %}</small>
+    <p>{{ r.overview|truncate(130) }}</p>
+    {% if r.mine %}<a class="btn small" href="/m/{{ r.mine.id }}">Schon in deinen Listen</a>
+    {% else %}
+    <form method="post" action="/hinzufuegen" class="row">
+      <input type="hidden" name="type" value="{{ r.type }}"><input type="hidden" name="ext_id" value="{{ r.ext_id }}">
+      <input type="hidden" name="title" value="{{ r.title }}"><input type="hidden" name="poster" value="{{ r.poster or '' }}">
+      <button class="btn small" name="action" value="merken">Merken</button>
+      {% if r.type == 'tv' %}<button class="btn small" name="action" value="schaue">Schaue ich</button>{% endif %}
+      <button class="btn small" name="action" value="gesehen">{{ 'Gesehen' if r.type == 'movie' else 'Alles gesehen' }}</button>
+    </form>{% endif %}
+  </div>
+</li>
+{% endfor %}
+</ul>
+{% endif %}
+{% endblock %}

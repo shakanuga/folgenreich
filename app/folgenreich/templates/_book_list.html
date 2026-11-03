@@ -1,0 +1,21 @@
+{% import '_macros.html' as ui %}
+<ul class="results">
+{% for b in results %}
+<li>
+  {{ ui.poster({'title': b.title, 'poster': b.cover}, 'small') }}
+  <div>
+    <b>{{ b.title }}</b>
+    <small>{{ b.authors or 'Autor unbekannt' }}{% if b.year %}, {{ b.year }}{% endif %}</small>
+    {% if b.mine %}
+      <a class="btn small have" href="/m/{{ b.mine.id }}">Hast du schon{% if b.mine.state == 'done' %}, gelesen{% elif b.mine.owned %}, noch ungelesen{% endif %}</a>
+    {% else %}
+    <form method="post" action="/hinzufuegen" class="row">
+      <input type="hidden" name="type" value="book"><input type="hidden" name="payload" value="{{ b.payload }}">
+      <button class="btn small primary" name="action" value="regal">Ins Regal</button>
+      <button class="btn small" name="action" value="gelesen">Gelesen</button>
+      <button class="btn small" name="action" value="merken">Merken</button>
+    </form>{% endif %}
+  </div>
+</li>
+{% endfor %}
+</ul>

@@ -1,0 +1,26 @@
+{% import '_macros_game.html' as gm %}
+<section id="exemplare">
+<h2>In deiner Sammlung</h2>
+<datalist id="plattformen">{% for p in platforms %}<option value="{{ p }}">{% endfor %}</datalist>
+{% if copies %}
+<ul class="copy-list">
+{% for c in copies %}
+<li><details>
+  <summary><b>{{ c.platform }}</b>{% if c.format %}, {{ c.format }}{% endif %}{% if c.condition %}, {{ c.condition }}{% endif %}{% if c.price_cents is not none %}, {{ c.price_cents|euro }}{% endif %}</summary>
+  <form method="post" action="/m/{{ m.id }}/exemplar/{{ c.id }}" class="copy-form">
+    {{ gm.copy_fields(c, platforms, formats, conditions, m.id) }}
+    <button class="btn full">Exemplar speichern</button>
+  </form>
+  <form method="post" action="/m/{{ m.id }}/exemplar/{{ c.id }}/entfernen" data-confirm="Dieses Exemplar entfernen?"><button class="link danger">Exemplar entfernen</button></form>
+</details></li>
+{% endfor %}
+</ul>
+{% else %}<p class="empty">Noch kein Exemplar eingetragen.</p>{% endif %}
+<details class="manual">
+  <summary>{{ 'Weiteres Exemplar eintragen' if copies else 'Exemplar eintragen' }}</summary>
+  <form method="post" action="/m/{{ m.id }}/exemplar" class="copy-form">
+    {{ gm.copy_fields(none, platforms, formats, conditions, m.id) }}
+    <button class="btn primary full">Exemplar eintragen</button>
+  </form>
+</details>
+</section>

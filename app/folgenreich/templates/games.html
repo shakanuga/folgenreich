@@ -1,0 +1,24 @@
+{% extends 'base.html' %}{% import '_macros.html' as ui %}
+{% block title %}Spiele{% endblock %}
+{% block content %}
+<div class="head-row"><h1>Spiele</h1><a class="btn primary" href="/spiel-foto">Spiel eintragen</a></div>
+<nav class="tabs" aria-label="Listen">
+  {% for key, label in {'sammlung': 'Sammlung', 'spiele': 'Spiele ich', 'durch': 'Durch', 'wunschliste': 'Wunschliste'}.items() %}
+  <a href="/spiele/{{ key }}" {% if key == tab %}aria-current="page"{% endif %}>{{ label }} <span>{{ tabs[key]|length }}</span></a>
+  {% endfor %}
+  <a href="/spiele/statistik">Statistik</a>
+</nav>
+{% if items|length > 8 %}{{ ui.filter_box('In dieser Liste suchen') }}{% endif %}
+{% if tab == 'sammlung' and platforms|length > 1 %}
+<div class="chips" role="group" aria-label="Nach Plattform filtern">
+  <button data-sub="" aria-pressed="true">Alle</button>{% for p in platforms %}<button data-sub="{{ p }}" aria-pressed="false">{{ p }}</button>{% endfor %}
+</div>
+{% endif %}
+{% if items %}
+<div class="shelf" data-list>{% for m in items %}
+  <a href="/m/{{ m.id }}" class="tile" data-title="{{ m.title }}" data-sub="{{ m.platforms or '' }}">{{ ui.poster(m) }}<span>{{ m.title }}</span>
+    <small>{{ (m.platforms or '')|replace('|', ', ') }}{% if m.state == 'done' and tab == 'sammlung' %}<br><b class="done">Durchgespielt</b>{% endif %}</small></a>
+{% endfor %}</div>
+{% elif tab == 'sammlung' %}<p class="empty">Noch nichts hier. <a href="/spiel-foto">Trag dein erstes Spiel ein.</a></p>
+{% else %}<p class="empty">Noch nichts hier.</p>{% endif %}
+{% endblock %}
