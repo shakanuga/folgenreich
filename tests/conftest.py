@@ -1,4 +1,5 @@
 import copy
+import io
 import os
 import sys
 import tempfile
@@ -6,6 +7,7 @@ import threading
 
 import pytest
 from flask import Flask, jsonify, request, Response
+from PIL import Image
 from werkzeug.serving import make_server
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "app"))
@@ -135,18 +137,31 @@ def jf_items():
     return jsonify(Items=rows[start:start + limit], TotalRecordCount=len(rows))
 
 
+def _image():
+    b = io.BytesIO()
+    Image.effect_noise((300, 450), 60).convert("RGB").save(b, "JPEG")
+    return b.getvalue()
+
+
+def _blank():
+    """Leerer, durchsichtiger Platzhalter: groß genug, aber ohne Inhalt"""
+    b = io.BytesIO()
+    Image.new("RGBA", (300, 450), (0, 0, 0, 0)).save(b, "PNG")
+    return b.getvalue() + b"x" * 3000
+
+
 @fake.get("/ol-covers/b/isbn/<name>")
 def ol_cover(name):
     if not STATE["ol_cover"]:
         return "", 404
-    return Response(b"x" * 5000, mimetype="image/jpeg")
+    return Response(_image(), mimetype="image/jpeg")
 
 
 @fake.get("/dnb-cover")
 def dnb_cover():
     if STATE["dnb_cover"]:
-        return Response(b"x" * 5000, mimetype="image/jpeg")
-    return Response(b"x" * 40, mimetype="image/gif")
+        return Response(_image(), mimetype="image/jpeg")
+    return Response(_blank(), mimetype="image/png")
 
 
 @fake.post("/oauth")

@@ -5,13 +5,17 @@ davon braucht zwingend einen Schlüssel. Die DNB fängt deutsche Bücher auf, di
 in den anderen beiden fehlen.
 """
 import io
+import logging
 import os
 import re
 import subprocess
+import uuid
 import xml.etree.ElementTree as ET
 
 import requests
-from PIL import Image, ImageOps
+from PIL import Image, ImageOps, ImageStat
+
+from . import db
 
 try:
     import pillow_heif
@@ -19,6 +23,7 @@ try:
 except ImportError:
     pass
 
+log = logging.getLogger("gunicorn.error")
 TIMEOUT = 12
 UA = {"User-Agent": "Folgenreich/1.0 (selbst gehosteter Medientracker)"}
 
@@ -124,25 +129,48 @@ def _year(text):
     return int(m.group()) if m else None
 
 
-def _is_image(url):
-    """Lädt die Adresse an: Nicht jede Quelle hat zu jeder ISBN wirklich ein Bild."""
+def fetch_cover(url):
+    """Lädt ein Cover auf den eigenen Server und prüft es als echtes Bild. Manche Quellen
+    liefern leere Platzhalter oder sperren den Abruf aus dem Browser, das fängt das ab."""
     try:
-        with requests.get(url, headers=UA, timeout=6, stream=True) as r:
-            if not r.ok or not r.headers.get("Content-Type", "").startswith("image/"):
-                return False
-            data = next(r.iter_content(4096), b"")
-            return len(data) > 1000  # Quellen liefern als Platzhalter oft ein winziges Bild
-    except requests.RequestException:
-        return False
+        r = requests.get(url, headers=UA, timeout=10)
+        if not r.ok or len(r.content) > 12_000_000:
+            log.info("Cover abgelehnt (HTTP %s): %s", r.status_code, url)
+            return None
+        img = Image.open(io.BytesIO(r.content))
+        img.load()
+    except (requests.RequestException, OSError, ValueError) as e:
+        log.info("Cover nicht lesbar (%s): %s", type(e).__name__, url)
+        return None
+    if img.mode in ("RGBA", "LA", "PA"):
+        rgba = img.convert("RGBA")
+        canvas = Image.new("RGBA", rgba.size, "white")
+        canvas.alpha_composite(rgba)
+        img = canvas
+    img = img.convert("RGB")
+    contrast = sum(ImageStat.Stat(img.convert("L")).stddev)
+    if img.width < 60 or img.height < 80 or contrast < 6:
+        log.info("Cover ist leer oder zu klein (%sx%s): %s", img.width, img.height, url)
+        return None
+    img.thumbnail((700, 1000))
+    name = uuid.uuid4().hex + ".jpg"
+    img.save(os.path.join(db.data_dir(), "covers", name), "JPEG", quality=86)
+    return "/cover/" + name
 
 
 def best_cover(isbn, current=None):
-    """Erste Adresse, die wirklich ein Bild liefert."""
+    """Probiert die Quellen durch und speichert das erste brauchbare Cover."""
+    if (current or "").startswith("/cover/"):
+        return current
     options = [current]
     if isbn:
         options += [base("OPENLIBRARY_COVERS", "https://covers.openlibrary.org") + f"/b/isbn/{isbn}-L.jpg?default=false",
                     base("DNB_COVERS", "https://portal.dnb.de/opac/mvb/cover") + f"?isbn={isbn}"]
-    return next((u for u in options if u and _is_image(u)), None)
+    for url in filter(None, options):
+        local = fetch_cover(url)
+        if local:
+            return local
+    return None
 
 
 def by_isbn(isbn):
@@ -155,7 +183,6 @@ def by_isbn(isbn):
         for k, v in h.items():
             merged[k] = merged.get(k) or v
     merged["isbn"] = isbn
-    merged["cover"] = best_cover(isbn, merged.get("cover"))
     return merged
 
 

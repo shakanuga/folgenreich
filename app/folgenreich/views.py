@@ -416,9 +416,12 @@ def set_cover(media_id):
         cover_url = _save_cover(request.files["photo"])
     else:
         isbn = books.clean_isbn(m["ext_id"]) if m["type"] == "book" else None
-        cover_url = books.best_cover(isbn, m["poster"] if (m["poster"] or "").startswith("/cover/") else None)
+        cover_url = books.best_cover(isbn, m["poster"])
         if not cover_url:
             flash("Für dieses Buch ist kein Cover zu finden. Lade ein eigenes Foto hoch.")
+            conn = db.get()
+            conn.execute("UPDATE media SET poster=NULL WHERE id=?", (media_id,))
+            conn.commit()
     if cover_url:
         conn = db.get()
         conn.execute("UPDATE media SET poster=? WHERE id=?", (cover_url, media_id))

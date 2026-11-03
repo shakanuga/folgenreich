@@ -156,16 +156,15 @@ def test_unreadable_upload(client):
     assert r.status_code == 400
 
 
-def test_dead_cover_is_replaced_by_working_one(client, server):
-    STATE["google"][f"isbn:{ISBN}"] = [dict(VOL, volumeInfo=dict(VOL["volumeInfo"], imageLinks={"thumbnail": server + "/nix.jpg"}))]
+def test_dead_cover_is_replaced_and_stored_locally(env, server):
     STATE["dnb_cover"] = True
-    assert "dnb-cover" in books.by_isbn(ISBN)["cover"]
-    STATE["dnb_cover"] = False
-    STATE["ol_cover"] = True
-    assert "ol-covers" in books.by_isbn(ISBN)["cover"]
+    url = books.best_cover(ISBN, server + "/nix.jpg")
+    assert url.startswith("/cover/")
+    import os
+    assert os.path.exists(os.path.join(db.data_dir(), "covers", url.split("/")[-1]))
 
 
-def test_no_cover_shows_placeholder_not_dead_image(env):
+def test_blank_placeholder_counts_as_no_cover(env):
     assert books.best_cover(ISBN, None) is None
 
 
@@ -177,7 +176,8 @@ def test_existing_book_can_find_or_get_cover(client):
     assert "kein Cover" in client.post(f"/m/{m['id']}/cover", follow_redirects=True).get_data(as_text=True)
     STATE["ol_cover"] = True
     client.post(f"/m/{m['id']}/cover")
-    assert "ol-covers" in logic.plain_items(1, "book")[0]["poster"]
+    assert logic.plain_items(1, "book")[0]["poster"].startswith("/cover/")
+    assert client.get(logic.plain_items(1, "book")[0]["poster"]).status_code == 200
     client.post(f"/m/{m['id']}/cover", data={"photo": (io.BytesIO(jpeg(Image.new("RGB", (800, 1200), "teal"))), "c.jpg")},
                 content_type="multipart/form-data")
     assert logic.plain_items(1, "book")[0]["poster"].startswith("/cover/")
