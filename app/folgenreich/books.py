@@ -124,6 +124,27 @@ def _year(text):
     return int(m.group()) if m else None
 
 
+def _is_image(url):
+    """Lädt die Adresse an: Nicht jede Quelle hat zu jeder ISBN wirklich ein Bild."""
+    try:
+        with requests.get(url, headers=UA, timeout=6, stream=True) as r:
+            if not r.ok or not r.headers.get("Content-Type", "").startswith("image/"):
+                return False
+            data = next(r.iter_content(4096), b"")
+            return len(data) > 1000  # Quellen liefern als Platzhalter oft ein winziges Bild
+    except requests.RequestException:
+        return False
+
+
+def best_cover(isbn, current=None):
+    """Erste Adresse, die wirklich ein Bild liefert."""
+    options = [current]
+    if isbn:
+        options += [base("OPENLIBRARY_COVERS", "https://covers.openlibrary.org") + f"/b/isbn/{isbn}-L.jpg?default=false",
+                    base("DNB_COVERS", "https://portal.dnb.de/opac/mvb/cover") + f"?isbn={isbn}"]
+    return next((u for u in options if u and _is_image(u)), None)
+
+
 def by_isbn(isbn):
     """Alle Quellen fragen und das vollständigste Ergebnis zusammensetzen."""
     hits = google(f"isbn:{isbn}")[:1] + openlibrary(isbn=isbn)[:1] + dnb(isbn=isbn)[:1]
@@ -134,6 +155,7 @@ def by_isbn(isbn):
         for k, v in h.items():
             merged[k] = merged.get(k) or v
     merged["isbn"] = isbn
+    merged["cover"] = best_cover(isbn, merged.get("cover"))
     return merged
 
 

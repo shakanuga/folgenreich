@@ -76,6 +76,15 @@
   <label>Notizen <textarea name="notes" rows="3">{{ entry.notes if entry and entry.notes }}</textarea></label>
   <button class="btn">Speichern</button>
 </form>
+{% if m.type in ('book', 'game') %}
+<details class="manual"><summary>Cover ändern</summary>
+  <form method="post" action="/m/{{ m.id }}/cover" enctype="multipart/form-data" class="stack">
+    <label>Eigenes Foto <input type="file" name="photo" accept="image/*" required></label>
+    <button class="btn">Foto als Cover nehmen</button>
+  </form>
+  {% if m.type == 'book' and m.source == 'books' %}<form method="post" action="/m/{{ m.id }}/cover"><button class="link">Cover erneut suchen</button></form>{% endif %}
+</details>
+{% endif %}
 {% if m.type == 'tv' %}<form method="post" action="/m/{{ m.id }}/art"><button class="link">{{ 'Als Serie einsortieren' if m.anime else 'Als Anime einsortieren' }}</button></form>{% endif %}
 {% if entry %}<form method="post" action="/m/{{ m.id }}/entfernen" data-confirm="{{ m.title }} samt Fortschritt entfernen?"><button class="link danger">Aus meinen Listen entfernen</button></form>{% endif %}
 </section>

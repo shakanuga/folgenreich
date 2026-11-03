@@ -11,7 +11,7 @@ from werkzeug.serving import make_server
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "app"))
 
 # Kleine Nachbildung der TMDB- und Bücher-Schnittstellen
-STATE = {"tv": {}, "movie": {}, "find": {}, "search": [], "google": {}, "dnb": "", "igdb": [], "jf": {}}
+STATE = {"tv": {}, "movie": {}, "find": {}, "search": [], "google": {}, "dnb": "", "igdb": [], "jf": {}, "ol_cover": False, "dnb_cover": False}
 fake = Flask("fake")
 
 
@@ -81,6 +81,9 @@ def env(server, monkeypatch, tmp_path):
     for k in ("tv", "movie", "find", "google"):
         STATE[k] = {}
     STATE["search"], STATE["dnb"], STATE["jf"] = [], "", {}
+    STATE["ol_cover"] = STATE["dnb_cover"] = False
+    monkeypatch.setenv("OPENLIBRARY_COVERS", server + "/ol-covers")
+    monkeypatch.setenv("DNB_COVERS", server + "/dnb-cover")
     monkeypatch.setenv("DATA_DIR", str(tmp_path))
     monkeypatch.setenv("TMDB_API_KEY", "testkey")
     monkeypatch.setenv("TMDB_BASE", server + "/3")
@@ -130,6 +133,20 @@ def jf_items():
     rows = STATE["jf"].get(kind, [])
     start, limit = int(request.args["StartIndex"]), int(request.args["Limit"])
     return jsonify(Items=rows[start:start + limit], TotalRecordCount=len(rows))
+
+
+@fake.get("/ol-covers/b/isbn/<name>")
+def ol_cover(name):
+    if not STATE["ol_cover"]:
+        return "", 404
+    return Response(b"x" * 5000, mimetype="image/jpeg")
+
+
+@fake.get("/dnb-cover")
+def dnb_cover():
+    if STATE["dnb_cover"]:
+        return Response(b"x" * 5000, mimetype="image/jpeg")
+    return Response(b"x" * 40, mimetype="image/gif")
 
 
 @fake.post("/oauth")

@@ -1,6 +1,6 @@
 {% macro poster(m, cls='') %}
 <span class="poster {{ cls }}" data-title="{{ m.title }}">
-  {% if m.poster %}<img src="{{ m.poster }}" alt="" loading="lazy">{% endif %}
+  {% if m.poster %}<img src="{{ m.poster }}" alt="" loading="lazy" referrerpolicy="no-referrer">{% endif %}
   <span class="poster-fallback">{{ m.title }}</span>
 </span>
 {% endmacro %}

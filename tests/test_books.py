@@ -154,3 +154,30 @@ def test_lists_are_per_person(env, client):
 def test_unreadable_upload(client):
     r = client.post("/api/buch-foto", data={"photo": (io.BytesIO(b"kein bild"), "x.jpg")}, content_type="multipart/form-data")
     assert r.status_code == 400
+
+
+def test_dead_cover_is_replaced_by_working_one(client, server):
+    STATE["google"][f"isbn:{ISBN}"] = [dict(VOL, volumeInfo=dict(VOL["volumeInfo"], imageLinks={"thumbnail": server + "/nix.jpg"}))]
+    STATE["dnb_cover"] = True
+    assert "dnb-cover" in books.by_isbn(ISBN)["cover"]
+    STATE["dnb_cover"] = False
+    STATE["ol_cover"] = True
+    assert "ol-covers" in books.by_isbn(ISBN)["cover"]
+
+
+def test_no_cover_shows_placeholder_not_dead_image(env):
+    assert books.best_cover(ISBN, None) is None
+
+
+def test_existing_book_can_find_or_get_cover(client):
+    STATE["google"][f"isbn:{ISBN}"] = [VOL]
+    client.post("/hinzufuegen", data={"type": "book", "action": "regal", "payload": json.dumps(books.by_isbn(ISBN))})
+    m = logic.plain_items(1, "book")[0]
+    assert m["poster"] is None
+    assert "kein Cover" in client.post(f"/m/{m['id']}/cover", follow_redirects=True).get_data(as_text=True)
+    STATE["ol_cover"] = True
+    client.post(f"/m/{m['id']}/cover")
+    assert "ol-covers" in logic.plain_items(1, "book")[0]["poster"]
+    client.post(f"/m/{m['id']}/cover", data={"photo": (io.BytesIO(jpeg(Image.new("RGB", (800, 1200), "teal"))), "c.jpg")},
+                content_type="multipart/form-data")
+    assert logic.plain_items(1, "book")[0]["poster"].startswith("/cover/")
