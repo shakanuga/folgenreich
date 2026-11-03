@@ -21,6 +21,7 @@ from . import db, logic, sync, tmdb
 
 log = logging.getLogger("folgenreich")
 _running = set()
+_progress = {}
 _guard = threading.Lock()
 
 
@@ -36,7 +37,7 @@ def _get(path, **params):
     url = os.environ["JELLYFIN_URL"].rstrip("/") + path
     headers = {"Authorization": f'MediaBrowser Token="{os.environ["JELLYFIN_API_KEY"]}"'}
     try:
-        r = requests.get(url, params=params, headers=headers, timeout=60)
+        r = requests.get(url, params=params, headers=headers, timeout=(8, 90))
     except requests.RequestException:
         raise JellyfinError(f"Jellyfin ist unter {os.environ['JELLYFIN_URL']} nicht erreichbar.") from None
     if r.status_code in (401, 403):
@@ -130,14 +131,17 @@ def _path(user_id):
 
 
 def _analyse(user_id, name):
+    _progress[user_id] = "Verbindung zu Jellyfin wird aufgebaut."
     jf = _user_id(name)
+    _progress[user_id] = "Verbindung steht. Der Verlauf wird gelesen."
     series = {s["Id"]: s for s in _items(jf, "Series")}
     by_series = defaultdict(list)
     for e in _items(jf, "Episode", played=True):
         by_series[e.get("SeriesId")].append(e)
     conn = db.get()
     plan, problems = [], []
-    for sid, eps in by_series.items():
+    for number, (sid, eps) in enumerate(by_series.items(), 1):
+        _progress[user_id] = f"Verbindung steht. Serie {number} von {len(by_series)} wird zugeordnet."
         info = series.get(sid) or {"Name": eps[0].get("SeriesName"), "ProviderIds": {}}
         title = info.get("Name") or "Unbekannte Serie"
         try:
@@ -164,6 +168,7 @@ def _analyse(user_id, name):
             listed = conn.execute("SELECT 1 FROM entries WHERE user_id=? AND media_id=?", (user_id, media_id)).fetchone()
             plan.append({"media_id": media_id, "title": row["title"], "new_entry": not listed, "episodes": fresh})
     movies = []
+    _progress[user_id] = "Verbindung steht. Filme werden zugeordnet."
     for m in _items(jf, "Movie", played=True):
         ids = _ids(m)
         ext = ids.get("tmdb")
@@ -201,7 +206,7 @@ def _save(user_id, data):
 def status(user_id):
     with _guard:
         if user_id in _running:
-            return {"state": "running"}
+            return {"state": "running", "text": _progress.get(user_id, "Die Prüfung startet.")}
     try:
         with open(_path(user_id), encoding="utf-8") as f:
             return json.load(f)

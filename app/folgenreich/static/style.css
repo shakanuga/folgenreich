@@ -209,6 +209,8 @@ code { background: var(--raise); padding: 1px 6px; border-radius: 5px; }
 
 .small-print { font-size: .82rem; margin-top: 32px; max-width: 70ch; }
 
+.busy { background: var(--raise); border-left: 4px solid var(--butter); padding: 10px 14px; border-radius: 0 9px 9px 0; }
+
 /* Rückmeldungen */
 .flash { background: var(--raise); padding: 10px 14px; border-radius: 9px; }
 .empty { color: var(--muted); max-width: 60ch; }

@@ -113,3 +113,12 @@ def test_preview_belongs_to_one_person(env, client):
     zweiter = other(env, client)
     zweiter.post("/konto/jellyfin/uebernehmen")
     assert not watches()
+
+
+def test_running_state_shows_progress(client):
+    jh._running.add(1)
+    jh._progress[1] = "Verbindung steht. Serie 3 von 9 wird zugeordnet."
+    try:
+        assert "Serie 3 von 9" in client.get("/konto").get_data(as_text=True)
+    finally:
+        jh._running.discard(1)

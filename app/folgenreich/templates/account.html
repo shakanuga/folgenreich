@@ -21,7 +21,7 @@
   {% if not jf_ready %}
   <p class="muted">Dafür fehlen beim Container <code>JELLYFIN_URL</code> und <code>JELLYFIN_API_KEY</code>.</p>
   {% elif jf and jf.state == 'running' %}
-  <p data-refresh>Dein Jellyfin-Verlauf wird geprüft. Das kann einige Minuten dauern, du kannst die Seite verlassen.</p>
+  <p class="busy" data-refresh><b>{{ jf.text }}</b><br>Das kann einige Minuten dauern. Du kannst die Seite verlassen.</p>
   {% elif jf and jf.state == 'error' %}
   <p class="danger">{{ jf.error }}</p>
   <form method="post" action="/konto/jellyfin/pruefen"><button class="btn">Erneut prüfen</button></form>

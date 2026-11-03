@@ -6,6 +6,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     DATA_DIR=/data \
+    HOME=/tmp \
     TZ=Europe/Berlin
 
 RUN apt-get update \
