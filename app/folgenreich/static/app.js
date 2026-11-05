@@ -139,6 +139,12 @@ if (photo) photo.addEventListener('change', async () => {
   const file = photo.files[0];
   if (!file) return;
   const out = document.getElementById('photo-result');
+  if (!file.size) {
+    out.innerHTML = '';
+    toast('Das Foto ist leer angekommen. Nimm es bitte noch einmal auf.');
+    photo.value = '';
+    return;
+  }
   out.innerHTML = '<p class="lead">Foto wird gelesen …</p>';
   const form = new FormData();
   try {
@@ -147,7 +153,8 @@ if (photo) photo.addEventListener('change', async () => {
       if (hit[0]) form.set(photo.dataset.url ? 'ean' : 'isbn', hit[0].rawValue);
     }
   } catch { /* der Server versucht es selbst */ }
-  if (!form.has('isbn') && !form.has('ean')) form.set('photo', file);
+  // Das Foto geht immer mit: Liest der Browser einen Code, der keine ISBN ist, wertet der Server das Bild aus
+  form.set('photo', file);
   try {
     const r = await fetch(photo.dataset.url || '/api/buch-foto', { method: 'POST', body: form });
     if (r.ok) out.innerHTML = await r.text();

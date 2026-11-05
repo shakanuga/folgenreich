@@ -257,7 +257,7 @@ def api_game_photo():
         return _game_by_ean(ean)
     f = request.files.get("photo")
     if not f:
-        return jsonify(error="Es kam kein Foto an."), 400
+        return _no_photo()
     try:
         img = books.load_photo(f.read())
     except Exception:
@@ -618,7 +618,7 @@ def api_book_photo():
     if not isbn:
         f = request.files.get("photo")
         if not f:
-            return jsonify(error="Es kam kein Foto an."), 400
+            return _no_photo()
         try:
             res = books.analyse_photo(f.read())
         except Exception:
@@ -631,6 +631,12 @@ def api_book_photo():
     elif query:
         results = books.search(query)
     return render_template("_photo_result.html", results=_decorate_books(results), isbn=isbn, how=how, query=query)
+
+
+def _no_photo():
+    current_app.logger.warning("Kein Foto: Typ=%s, Länge=%s, Felder=%s, Dateien=%s", request.content_type,
+                               request.content_length, list(request.form), list(request.files))
+    return jsonify(error="Es kam kein Foto an. Nimm es bitte noch einmal auf."), 400
 
 
 def _save_cover(f):

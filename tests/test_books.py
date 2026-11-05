@@ -225,3 +225,15 @@ def test_stored_books_are_tidied_on_start(env):
     books.tidy_catalog()
     rows = c.execute("SELECT title,authors FROM media ORDER BY ext_id").fetchall()
     assert tuple(rows[0]) == ("Planet Ozean", "Jeanette Schmitz") and tuple(rows[1]) == ("Tschick", "Wolfgang Herrndorf")
+
+
+def test_wrong_code_from_browser_falls_back_to_photo(client):
+    STATE["google"][f"isbn:{ISBN}"] = [VOL]
+    r = client.post("/api/buch-foto", data={"isbn": "4006381333931", "photo": (io.BytesIO(jpeg(in_scene(ean_image(ISBN)))), "b.jpg")},
+                    content_type="multipart/form-data")
+    assert r.status_code == 200 and "Der Name des Windes" in r.get_data(as_text=True)
+
+
+def test_missing_photo_gets_clear_message(client):
+    r = client.post("/api/buch-foto", data={"isbn": "4006381333931"})
+    assert r.status_code == 400 and "noch einmal" in r.json["error"]
