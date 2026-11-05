@@ -31,9 +31,12 @@ def create_app(background=True):
     app.jinja_env.filters["num"] = lambda n: f"{n:,}".replace(",", ".")
     app.jinja_env.filters["score"] = lambda r: f"{r:g}".replace(".", ",") if r is not None else ""
     app.jinja_env.filters["euro"] = lambda c: f"{c / 100:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") + " €"
+    app.jinja_env.globals["book_state"] = logic.BOOK_STATE
     app.jinja_env.globals["pos_label"] = logic.pos_label
     app.jinja_env.globals["waiting_label"] = logic.waiting_label
     app.config["BACKGROUND"] = background
+    from . import books
+    books.tidy_catalog()
     from .views import bp
     app.register_blueprint(bp)
     if background:

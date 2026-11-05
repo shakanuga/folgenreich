@@ -15,6 +15,7 @@ from zoneinfo import ZoneInfo
 
 from . import db
 
+BOOK_STATE = {"planned": "Noch nicht gelesen", "reading": "Lese ich gerade", "done": "Gelesen"}
 POS = 100000  # season*POS+number ergibt eine sortierbare Folgen-Position
 
 

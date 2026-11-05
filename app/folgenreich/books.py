@@ -32,6 +32,45 @@ def base(name, default):
     return os.environ.get(name, default)
 
 
+ROLLEN = r"Verfasser(?:in)?|Illustrator(?:in)?|[ÜU]bersetzer(?:in)?|Herausgeber(?:in)?|Mitwirkende[r]?|Autor(?:in)?|Sprecher(?:in)?"
+
+
+def clean_title(text):
+    """Entfernt Katalogzusätze: '[Planet Ozean] ; Planet Ozean' wird zu 'Planet Ozean'."""
+    t = re.sub(r"^\s*\[[^\]]*\]\s*;\s*", "", text or "")
+    t = re.sub(r"^\s*\[([^\]]*)\]\s*$", r"\1", t)
+    return re.sub(r"\s+", " ", t).strip()
+
+
+def clean_authors(text):
+    """Entfernt Rollenangaben und dreht 'Nachname, Vorname' um."""
+    t = re.sub(rf"[\[(]?\b(?:{ROLLEN})\b[\])]?", " ", text or "")
+    t = re.sub(r"\[[^\]]*\]?", " ", t)
+    parts = [re.sub(r"\s+", " ", p).strip(" ;]") for p in re.split(r"[,;]", t)]
+    parts = [p for p in parts if p]
+    if len(parts) % 2 == 0 and all(" " not in p for p in parts[0::2]):
+        parts = [f"{parts[i + 1]} {parts[i]}" for i in range(0, len(parts), 2)]
+    return ", ".join(parts) or None
+
+
+def tidy_catalog():
+    """Räumt bereits gespeicherte Bücher auf. Mehrfaches Ausführen ändert nichts mehr."""
+    conn = db.connect()
+    for r in conn.execute("SELECT id,title,authors FROM media WHERE type='book'").fetchall():
+        title, authors = clean_title(r["title"]) or r["title"], r["authors"]
+        if authors and (re.search(ROLLEN, authors) or "[" in authors or "]" in authors or _reversed(authors)):
+            authors = clean_authors(authors)
+        if (title, authors) != (r["title"], r["authors"]):
+            conn.execute("UPDATE media SET title=?, authors=? WHERE id=?", (title, authors, r["id"]))
+    conn.commit()
+    conn.close()
+
+
+def _reversed(text):
+    parts = [p.strip() for p in text.split(",")]
+    return len(parts) % 2 == 0 and all(" " not in p for p in parts[0::2])
+
+
 def clean_isbn(text):
     s = re.sub(r"[^0-9Xx]", "", text or "").upper()
     if len(s) == 10 and _valid10(s):
@@ -50,8 +89,8 @@ def _check13(core):
     return str((10 - sum(int(c) * (3 if i % 2 else 1) for i, c in enumerate(core)) % 10) % 10)
 
 
-def _book(title, authors=None, year=None, isbn=None, cover=None, publisher=None, pages=None, overview=None):
-    return {"title": title, "authors": ", ".join(a for a in (authors or []) if a) or None,
+def _book(title, authors=None, year=None, isbn=None, cover=None, publisher=None, pages=None, overview=None, genres=None):
+    return {"genres": ", ".join(genres or []) or None, "title": clean_title(title), "authors": clean_authors("; ".join(a for a in (authors or []) if a)) if authors else None,
             "year": year, "isbn": isbn, "cover": cover, "publisher": publisher, "pages": pages, "overview": overview}
 
 
@@ -81,7 +120,7 @@ def google(query):
         if title:
             out.append(_book(title, v.get("authors"), _year(v.get("publishedDate")), isbn,
                              cover.replace("http://", "https://") if cover else None, v.get("publisher"),
-                             v.get("pageCount"), v.get("description")))
+                             v.get("pageCount"), v.get("description"), v.get("categories")))
     return out
 
 

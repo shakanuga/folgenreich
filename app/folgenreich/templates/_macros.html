@@ -5,6 +5,23 @@
 </span>
 {% endmacro %}
 
+{% macro book(m, badge='') %}
+<span class="slot">
+  <span class="cover" style="--h:{{ '%.2f' % (0.9 + (m.id % 11) / 100) }}">
+    {% if m.poster %}<img src="{{ m.poster }}" alt="" loading="lazy" referrerpolicy="no-referrer">{% endif %}
+    <span class="cover-title">{{ m.title }}</span>
+  </span>
+  {% if badge %}<span class="badge">{{ badge }}</span>{% endif %}
+</span>
+<span class="plank"></span>
+{% endmacro %}
+
+{% macro sort_box(options) %}
+<label class="sorter">Sortieren nach
+  <select data-sort>{% for key, label in options.items() %}<option value="{{ key }}">{{ label }}</option>{% endfor %}</select>
+</label>
+{% endmacro %}
+
 {% macro strip(cells, label) %}
 {% if cells %}<span class="strip {{ 'dense' if cells|length > 30 }}" role="img" aria-label="{{ label }}">{% for c in cells %}<i class="{{ c }}"></i>{% endfor %}</span>{% endif %}
 {% endmacro %}

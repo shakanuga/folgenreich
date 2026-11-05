@@ -112,3 +112,13 @@ def test_photo_reads_cover_title(client):
 def test_movies_and_series_have_no_collection_features(client):
     html = client.get("/filme").get_data(as_text=True)
     assert "Regal" not in html and "Exemplar" not in html
+
+
+def test_collection_shows_copy_details(client):
+    STATE["igdb"] = [ZELDA]
+    add(client)
+    c = logic.copies(1, mid())[0]
+    client.post(f"/m/{mid()}/exemplar/{c['id']}", data={"platform": "Nintendo Switch", "format": "Modul", "condition": "Gut",
+                                                        "price": "45", "location": "Regal Flur", "edition": "Steelbook"})
+    page = client.get("/spiele").get_data(as_text=True)
+    assert "Nintendo Switch, Modul, Gut, Steelbook" in page and "Regal Flur" in page and "45,00 €" in page and "Adventure" in page

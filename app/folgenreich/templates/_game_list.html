@@ -2,7 +2,7 @@
 <ul class="results">
 {% for r in results %}
 <li>
-  {{ ui.poster({'title': r.title, 'poster': r.cover}, 'small') }}
+  {{ ui.poster({'title': r.title, 'poster': r.cover}, 'small whole') }}
   <div>
     <b>{{ r.title }}</b>
     <small>{{ r.year or 'Jahr unbekannt' }}{% if r.genres %}, {{ r.genres[:2]|join(', ') }}{% endif %}</small>

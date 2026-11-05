@@ -127,7 +127,7 @@ def test_german_book_only_in_dnb(client):
       <dc:publisher>Kleinverlag</dc:publisher><dc:date>2019</dc:date><dc:identifier>ISBN {ISBN}</dc:identifier>
       </dc></recordData></record></records></searchRetrieveResponse>"""
     b = books.by_isbn(ISBN)
-    assert b["title"] == "Dorfgeschichten: Roman" and b["authors"] == "Muster, Anna" and b["year"] == 2019
+    assert b["title"] == "Dorfgeschichten: Roman" and b["authors"] == "Anna Muster" and b["year"] == 2019
 
 
 def test_manual_book_with_cover(client):
@@ -181,3 +181,47 @@ def test_existing_book_can_find_or_get_cover(client):
     client.post(f"/m/{m['id']}/cover", data={"photo": (io.BytesIO(jpeg(Image.new("RGB", (800, 1200), "teal"))), "c.jpg")},
                 content_type="multipart/form-data")
     assert logic.plain_items(1, "book")[0]["poster"].startswith("/cover/")
+
+
+def test_shelf_shows_metadata_and_refresh_fills_gaps(client):
+    v = dict(VOL, volumeInfo=dict(VOL["volumeInfo"], categories=["Fantasy"], publisher="Klett"))
+    client.post("/hinzufuegen", data={"type": "book", "action": "regal", "payload": json.dumps({"title": "Der Name des Windes", "isbn": ISBN})})
+    m = logic.plain_items(1, "book")[0]
+    STATE["google"][f"isbn:{ISBN}"] = [v]
+    STATE["ol_cover"] = True
+    client.post(f"/m/{m['id']}/cover")
+    page = client.get("/buecher").get_data(as_text=True)
+    assert "Patrick Rothfuss" in page and "2008, 800 Seiten" in page and "Fantasy" in page and 'class="wall"' in page
+    detail = client.get(f"/m/{m['id']}").get_data(as_text=True)
+    assert "Klett" in detail and ISBN in detail
+
+
+@pytest.mark.parametrize("raw,clean", [
+    ("[Planet Ozean] ; Planet Ozean", "Planet Ozean"),
+    ("[Marvel universe - an atlas of Marvel] ; Der grosse Marvel Atlas", "Der grosse Marvel Atlas"),
+    ("Mission Erde: Meer als nur ein Bildband", "Mission Erde: Meer als nur ein Bildband")])
+def test_clean_title(raw, clean):
+    assert books.clean_title(raw) == clean
+
+
+@pytest.mark.parametrize("raw,clean", [
+    ("Hartley, Ned, Eckwall, Jensine Illustrator], Shephard, David, Steindamm, Constanze",
+     "Ned Hartley, Jensine Eckwall, David Shephard, Constanze Steindamm"),
+    ("Last, Shari, Dakin, Glenn Verfasser]", "Shari Last, Glenn Dakin"),
+    ("Lehmann, Robert Marc", "Robert Marc Lehmann"),
+    ("Muster, Anna [Verfasser]", "Anna Muster"),
+    ("Arthur Hailey, Colleen McCullough", "Arthur Hailey, Colleen McCullough"),
+    ("PietSmiet", "PietSmiet")])
+def test_clean_authors(raw, clean):
+    assert books.clean_authors(raw) == clean
+
+
+def test_stored_books_are_tidied_on_start(env):
+    c = db.get()
+    c.execute("INSERT INTO media(type,ext_id,source,title,authors) VALUES('book','1','books','[Planet Ozean] ; Planet Ozean','Schmitz, Jeanette')")
+    c.execute("INSERT INTO media(type,ext_id,source,title,authors) VALUES('book','2','books','Tschick','Wolfgang Herrndorf')")
+    c.commit()
+    books.tidy_catalog()
+    books.tidy_catalog()
+    rows = c.execute("SELECT title,authors FROM media ORDER BY ext_id").fetchall()
+    assert tuple(rows[0]) == ("Planet Ozean", "Jeanette Schmitz") and tuple(rows[1]) == ("Tschick", "Wolfgang Herrndorf")

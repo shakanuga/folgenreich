@@ -2,15 +2,27 @@
 {% block title %}{{ m.title }}{% endblock %}
 {% block content %}
 <section class="detail-head" {% if m.backdrop %}style="--bg:url('{{ m.backdrop }}')"{% endif %}>
-  {{ ui.poster(m) }}
+  {{ ui.poster(m, 'whole' if m.type in ('book', 'game') else '') }}
   <div>
     <h1>{{ m.title }}</h1>
-    <p class="meta">{% if m.authors %}{{ m.authors }}, {% endif %}{{ m.year or '' }}{% if m.genres %}, {{ m.genres }}{% endif %}{% if m.original_title and m.original_title != m.title %}, {{ m.original_title }}{% endif %}{% if m.publisher %}, {{ m.publisher }}{% endif %}{% if m.pages %}, {{ m.pages }} Seiten{% endif %}</p>
+    <p class="meta">{% if m.type in ('book', 'game') %}{{ m.authors or m.year or '' }}{% else %}{{ m.year or '' }}{% if m.original_title and m.original_title != m.title %}, {{ m.original_title }}{% endif %}{% endif %}</p>
     {% if it %}<p class="status">{{ it.label }}</p>{% endif %}
     {% if it and it.next_pos %}<button class="btn primary" data-next="{{ m.id }}" data-reload>{{ pos_label(it.next_pos) }} abhaken</button>{% endif %}
   </div>
 </section>
 {% if m.overview %}<p class="overview">{{ m.overview }}</p>{% endif %}
+{% if m.type in ('book', 'game') %}
+<dl class="facts">
+  {% if m.authors %}<dt>Autor</dt><dd>{{ m.authors }}</dd>{% endif %}
+  {% if m.year %}<dt>Erschienen</dt><dd>{{ m.year }}</dd>{% endif %}
+  {% if m.publisher %}<dt>Verlag</dt><dd>{{ m.publisher }}</dd>{% endif %}
+  {% if m.pages %}<dt>Umfang</dt><dd>{{ m.pages }} Seiten</dd>{% endif %}
+  {% if m.genres %}<dt>Genre</dt><dd>{{ m.genres }}</dd>{% endif %}
+  {% if m.type == 'book' and m.source == 'books' %}<dt>ISBN</dt><dd>{{ m.ext_id }}</dd>{% endif %}
+  {% if entry %}<dt>Hinzugefügt</dt><dd>{{ entry.added_at|dedate }}</dd>{% endif %}
+  {% if entry and entry.finished_at and entry.state == 'done' %}<dt>{{ 'Gelesen am' if m.type == 'book' else 'Durchgespielt am' }}</dt><dd>{{ entry.finished_at|dedate }}</dd>{% endif %}
+</dl>
+{% endif %}
 
 {% if m.type == 'tv' %}
 {% if seasons %}
@@ -82,7 +94,7 @@
     <label>Eigenes Foto <input type="file" name="photo" accept="image/*" required></label>
     <button class="btn">Foto als Cover nehmen</button>
   </form>
-  {% if m.type == 'book' and m.source == 'books' %}<form method="post" action="/m/{{ m.id }}/cover"><button class="link">Cover erneut suchen</button></form>{% endif %}
+  {% if m.type == 'book' and m.source == 'books' %}<form method="post" action="/m/{{ m.id }}/cover"><button class="link">Cover und Daten erneut suchen</button></form>{% endif %}
 </details>
 {% endif %}
 {% if m.type == 'tv' %}<form method="post" action="/m/{{ m.id }}/art"><button class="link">{{ 'Als Serie einsortieren' if m.anime else 'Als Anime einsortieren' }}</button></form>{% endif %}

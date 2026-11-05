@@ -2,7 +2,7 @@
 <ul class="results">
 {% for b in results %}
 <li>
-  {{ ui.poster({'title': b.title, 'poster': b.cover}, 'small') }}
+  {{ ui.poster({'title': b.title, 'poster': b.cover}, 'small whole') }}
   <div>
     <b>{{ b.title }}</b>
     <small>{{ b.authors or 'Autor unbekannt' }}{% if b.year %}, {{ b.year }}{% endif %}</small>

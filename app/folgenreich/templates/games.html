@@ -15,9 +15,19 @@
 </div>
 {% endif %}
 {% if items %}
-<div class="shelf" data-list>{% for m in items %}
-  <a href="/m/{{ m.id }}" class="tile" data-title="{{ m.title }}" data-sub="{{ m.platforms or '' }}">{{ ui.poster(m) }}<span>{{ m.title }}</span>
-    <small>{{ (m.platforms or '')|replace('|', ', ') }}{% if m.state == 'done' and tab == 'sammlung' %}<br><b class="done">Durchgespielt</b>{% endif %}</small></a>
+{% if items|length > 3 %}{{ ui.sort_box({'name': 'Titel', 'year': 'Erscheinungsjahr', 'added': 'Zuletzt hinzugefügt', 'rating': 'Bewertung', 'spent': 'Kaufpreis'}) }}{% endif %}
+<div class="wall" data-list>{% for m in items %}
+  <a href="/m/{{ m.id }}" class="book game" data-title="{{ m.title }} {{ m.genres or '' }}" data-sub="{{ m.platforms or '' }}"
+     data-sort-name="{{ m.title }}" data-sort-year="{{ m.year or 0 }}" data-sort-added="{{ m.added_at }}" data-sort-rating="{{ m.rating or 0 }}" data-sort-spent="{{ m.spent }}">
+    {{ ui.book(m, 'Durch' if m.state == 'done' else ('Spiele ich' if m.state == 'playing' else '')) }}
+    <span class="tag"><b>{{ m.title }}</b>
+      {% for c in m.copy_list %}<small>{{ [c.platform, c.format, c.condition, c.edition]|select|join(', ') }}</small>{% endfor %}
+      <small>{{ [m.year, m.genres]|select|join(', ') }}</small>
+      {% if m.copy_list|selectattr('location')|list %}<small>{{ m.copy_list|map(attribute='location')|select|unique|join(', ') }}</small>{% endif %}
+      {% if m.spent %}<small>{{ m.spent|euro }}</small>{% endif %}
+      {% if m.rating is not none %}<small>{{ m.rating|score }} von 10</small>{% endif %}
+    </span>
+  </a>
 {% endfor %}</div>
 {% elif tab == 'sammlung' %}<p class="empty">Noch nichts hier. <a href="/spiel-foto">Trag dein erstes Spiel ein.</a></p>
 {% else %}<p class="empty">Noch nichts hier.</p>{% endif %}

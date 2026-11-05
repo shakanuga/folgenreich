@@ -205,7 +205,14 @@ def games(tab="sammlung"):
     if tab not in tabs:
         abort(404)
     platforms = sorted({p for i in tabs["sammlung"] for p in (i["platforms"] or "").split("|") if p})
-    return render_template("games.html", tabs=tabs, tab=tab, items=tabs[tab], platforms=platforms)
+    all_copies = defaultdict(list)
+    for c in db.get().execute("SELECT * FROM copies WHERE user_id=? ORDER BY platform", (uid,)):
+        all_copies[c["media_id"]].append(c)
+    for item in tabs[tab]:
+        item["copy_list"] = all_copies[item["id"]]
+        item["spent"] = sum(c["price_cents"] or 0 for c in item["copy_list"])
+    return render_template("games.html", tabs=tabs, tab=tab, items=tabs[tab], platforms=platforms,
+                           state_names=logic.GAME_STATE)
 
 
 def _game_tabs(uid):
@@ -443,7 +450,15 @@ def set_cover(media_id):
         cover_url = _save_cover(request.files["photo"])
     else:
         isbn = books.clean_isbn(m["ext_id"]) if m["type"] == "book" else None
-        cover_url = books.best_cover(isbn, m["poster"])
+        found = books.by_isbn(isbn) if isbn else None
+        if found:
+            conn = db.get()
+            conn.execute("""UPDATE media SET authors=COALESCE(authors,?), year=COALESCE(year,?), publisher=COALESCE(publisher,?),
+                pages=COALESCE(pages,?), overview=COALESCE(overview,?), genres=COALESCE(genres,?) WHERE id=?""",
+                         (found.get("authors"), found.get("year"), found.get("publisher"), found.get("pages"),
+                          found.get("overview"), found.get("genres"), media_id))
+            conn.commit()
+        cover_url = books.best_cover(isbn, m["poster"] or (found or {}).get("cover"))
         if not cover_url:
             flash("Für dieses Buch ist kein Cover zu finden. Lade ein eigenes Foto hoch.")
             conn = db.get()
@@ -572,10 +587,10 @@ def _add_book(b, action):
     pages = b.get("pages") if isinstance(b.get("pages"), int) else None
     if not (b.get("cover") or "").startswith("/cover/"):
         b["cover"] = books.best_cover(b.get("isbn"), b.get("cover"))
-    conn.execute("""INSERT OR IGNORE INTO media(type,ext_id,source,title,year,poster,overview,authors,publisher,pages,status)
-        VALUES('book',?,?,?,?,?,?,?,?,?,'released')""",
+    conn.execute("""INSERT OR IGNORE INTO media(type,ext_id,source,title,year,poster,overview,authors,publisher,pages,genres,status)
+        VALUES('book',?,?,?,?,?,?,?,?,?,?,'released')""",
                  (key, "books" if b.get("isbn") else "manual", b["title"], b.get("year"), b.get("cover"),
-                  b.get("overview"), b.get("authors"), b.get("publisher"), pages))
+                  b.get("overview"), b.get("authors"), b.get("publisher"), pages, b.get("genres")))
     media_id = conn.execute("SELECT id FROM media WHERE type='book' AND ext_id=?", (key,)).fetchone()["id"]
     state = {"merken": "planned", "regal": "planned", "gelesen": "done", "lese": "reading"}[action]
     logic.ensure_entry(uid, media_id, state)

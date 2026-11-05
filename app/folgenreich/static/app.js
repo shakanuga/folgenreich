@@ -10,7 +10,7 @@ if (currentTab) currentTab.scrollIntoView({ block: 'nearest', inline: 'center' }
 
 /* Poster ohne Bild zeigen den Titel */
 document.addEventListener('error', e => {
-  if (e.target.tagName === 'IMG' && e.target.closest('.poster')) e.target.remove();
+  if (e.target.tagName === 'IMG' && e.target.closest('.poster, .cover')) e.target.remove();
 }, true);
 
 let toastTimer;
@@ -107,6 +107,31 @@ function applyFilter() {
   });
 }
 document.addEventListener('input', e => { if (e.target.matches('[data-filter]')) applyFilter(); });
+
+/* Regal sortieren: Text aufsteigend, Zahlen und Daten absteigend */
+function applySort(key) {
+  const list = document.querySelector('[data-list]');
+  const prop = 'sort' + key[0].toUpperCase() + key.slice(1);
+  const items = [...list.children];
+  const text = key === 'name';
+  const number = key === 'author';
+  items.sort((a, b) => {
+    const x = a.dataset[prop] || '', y = b.dataset[prop] || '';
+    if (text) return x.localeCompare(y, 'de');
+    if (number) return +x - +y;
+    return key === 'added' ? y.localeCompare(x) : +y - +x;
+  });
+  items.forEach(el => list.append(el));
+}
+const sorter = document.querySelector('[data-sort]');
+if (sorter) {
+  const saved = (() => { try { return localStorage.getItem('fr-sort' + location.pathname); } catch { return null; } })();
+  if (saved && [...sorter.options].some(o => o.value === saved)) { sorter.value = saved; applySort(saved); }
+  sorter.addEventListener('change', () => {
+    applySort(sorter.value);
+    try { localStorage.setItem('fr-sort' + location.pathname, sorter.value); } catch { /* egal */ }
+  });
+}
 
 /* Buchfoto: Wenn der Browser Strichcodes selbst lesen kann, geht das schneller */
 const photo = document.getElementById('book-photo');
