@@ -110,7 +110,7 @@ CREATE INDEX IF NOT EXISTS idx_watches_user ON watches(user_id, media_id);
 CREATE INDEX IF NOT EXISTS idx_media_title ON media(title COLLATE NOCASE);
 """
 
-COLUMNS = [("media", "genres", "TEXT")]
+COLUMNS = [("media", "genres", "TEXT"), ("users", "oidc_sub", "TEXT")]
 
 _local = threading.local()
 

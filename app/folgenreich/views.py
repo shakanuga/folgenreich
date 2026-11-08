@@ -12,7 +12,7 @@ from flask import (Blueprint, Response, abort, current_app, flash, g, jsonify, r
                    send_from_directory, session, url_for)
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from . import books, db, igdb, importer, jellyfin, jellyfin_history, logic, sync, tmdb
+from . import books, db, igdb, importer, jellyfin, jellyfin_history, logic, pocketid, sync, tmdb
 from . import games as games_rec
 
 bp = Blueprint("main", __name__)
@@ -37,9 +37,9 @@ def login_required(f):
     @wraps(f)
     def inner(*a, **k):
         if not g.user:
-            if not db.get().execute("SELECT 1 FROM users LIMIT 1").fetchone():
+            if not db.get().execute("SELECT 1 FROM users LIMIT 1").fetchone() and not _oidc().enabled:
                 return redirect(url_for("main.setup"))
-            return redirect(url_for("main.login"))
+            return redirect(url_for("main.login", next=request.full_path.rstrip("?")))
         return f(*a, **k)
     return inner
 
@@ -55,7 +55,8 @@ def admin_required(f):
 
 @bp.app_context_processor
 def ctx():
-    return {"user": g.get("user"), "tmdb_ready": tmdb.configured()}
+    return {"user": g.get("user"), "tmdb_ready": tmdb.configured(),
+            "oidc": current_app.extensions["pocketid"].public()}
 
 
 @bp.get("/health")
@@ -85,12 +86,21 @@ def setup():
     return render_template("login.html", first=True)
 
 
+def _oidc():
+    return current_app.extensions["pocketid"]
+
+
 @bp.route("/anmelden", methods=["GET", "POST"])
 def login():
     if g.user:
         return redirect(url_for("main.start"))
-    if not db.get().execute("SELECT 1 FROM users LIMIT 1").fetchone():
+    oidc = _oidc()
+    if not db.get().execute("SELECT 1 FROM users LIMIT 1").fetchone() and not oidc.enabled:
         return redirect(url_for("main.setup"))
+    if request.method == "GET" and oidc.public()["auto_redirect"] and not request.args.get("fehler"):
+        return redirect(url_for("main.oidc_start"))
+    if request.method == "POST" and not oidc.public()["password_login"]:
+        abort(403)
     if request.method == "POST":
         ip = request.remote_addr or ""
         recent = [t for t in _fails[ip] if t > time.time() - 600]
@@ -106,6 +116,65 @@ def login():
         _fails[ip].append(time.time())
         flash("Name oder Passwort stimmt nicht.")
     return render_template("login.html")
+
+
+@bp.get("/anmelden/pocketid")
+def oidc_start():
+    oidc = _oidc()
+    try:
+        url, pending = oidc.begin(url_for("main.oidc_callback", _external=True), request.args.get("next", "/"))
+    except pocketid.OIDCError as e:
+        flash(str(e))
+        return redirect(url_for("main.login", fehler=1))
+    res = redirect(url)
+    res.set_cookie(pocketid.PENDING_COOKIE, pocketid.sign(pending, current_app.secret_key.encode()),
+                   max_age=pocketid.PENDING_MAX_AGE, httponly=True, samesite="Lax",
+                   secure=current_app.config["SESSION_COOKIE_SECURE"])
+    return res
+
+
+@bp.get("/anmelden/pocketid/zurueck")
+def oidc_callback():
+    pending = pocketid.unsign(request.cookies.get(pocketid.PENDING_COOKIE), current_app.secret_key.encode())
+    try:
+        info = _oidc().complete(request.args, pending)
+        row = _oidc_user(info)
+    except pocketid.OIDCError as e:
+        flash(str(e))
+        res = redirect(url_for("main.login", fehler=1))
+    else:
+        session.clear()
+        session.permanent = True
+        session["uid"] = row["id"]
+        res = redirect(pending["next"])
+    res.delete_cookie(pocketid.PENDING_COOKIE)
+    return res
+
+
+def _oidc_user(info):
+    """Findet oder verknüpft das Konto zu einer Pocket-ID-Anmeldung."""
+    conn = db.get()
+    rows = [dict(r) for r in conn.execute("SELECT id, username, oidc_sub FROM users")]
+    row = pocketid.match_user(rows, info)
+    if row:
+        if not row["oidc_sub"]:
+            conn.execute("UPDATE users SET oidc_sub=? WHERE id=?", (info["sub"], row["id"]))
+            conn.commit()
+        return row
+    first = not rows
+    if not (first or _oidc().auto_create):
+        raise pocketid.OIDCError(f"Zu „{info['username'] or info['email']}“ gibt es hier kein Konto. "
+                                 "Der Name in Folgenreich muss dem Benutzernamen in Pocket ID entsprechen.")
+    base = info["username"] or info["email"].split("@")[0] or "nutzer"
+    name, n = base, 1
+    while conn.execute("SELECT 1 FROM users WHERE username=?", (name,)).fetchone():
+        n += 1
+        name = f"{base}{n}"
+    cur = conn.execute("INSERT INTO users(username,pw_hash,is_admin,oidc_sub) VALUES(?,?,?,?)",
+                       (name, generate_password_hash(secrets.token_urlsafe(32)), int(first or info["is_admin"]),
+                        info["sub"]))
+    conn.commit()
+    return {"id": cur.lastrowid}
 
 
 @bp.post("/abmelden")

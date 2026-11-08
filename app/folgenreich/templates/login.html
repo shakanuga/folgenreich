@@ -4,10 +4,16 @@
 <div class="gate-box">
   <h1>Folgenreich</h1>
   <p class="lead">{% if first %}Lege das erste Konto an. Es verwaltet später auch die anderen.{% else %}Serien, Filme und Bücher an einem Ort.{% endif %}</p>
+  {% if oidc.enabled and not first %}
+  <a class="btn primary block" href="{{ url_for('main.oidc_start', next=request.args.get('next', '/')) }}">{{ oidc.label }}</a>
+  {% endif %}
+  {% if oidc.password_login or first %}
+  {% if oidc.enabled and not first %}<p class="muted or">oder mit Passwort</p>{% endif %}
   <form method="post" class="stack">
-    <label>Name <input name="username" autocomplete="username" required autofocus></label>
+    <label>Name <input name="username" autocomplete="username" required{% if not oidc.enabled %} autofocus{% endif %}></label>
     <label>Passwort <input type="password" name="password" autocomplete="{{ 'new-password' if first else 'current-password' }}" required></label>
-    <button class="btn primary">{{ 'Konto anlegen' if first else 'Anmelden' }}</button>
+    <button class="btn{% if not oidc.enabled or first %} primary{% endif %}">{{ 'Konto anlegen' if first else 'Anmelden' }}</button>
   </form>
+  {% endif %}
 </div>
 {% endblock %}

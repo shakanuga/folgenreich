@@ -6,7 +6,7 @@ from datetime import timedelta
 from flask import Flask
 from werkzeug.middleware.proxy_fix import ProxyFix
 
-from . import db, logic, sync
+from . import db, logic, pocketid, sync
 
 
 def _secret():
@@ -35,6 +35,7 @@ def create_app(background=True):
     app.jinja_env.globals["pos_label"] = logic.pos_label
     app.jinja_env.globals["waiting_label"] = logic.waiting_label
     app.config["BACKGROUND"] = background
+    app.extensions["pocketid"] = pocketid.PocketID()
     from . import books
     books.tidy_catalog()
     from .views import bp

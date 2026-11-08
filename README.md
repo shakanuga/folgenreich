@@ -40,6 +40,7 @@ chown 99:100 /mnt/user/appdata/folgenreich
 | `GOOGLE_BOOKS_API_KEY` | optional, falls Google ohne Schlüssel drosselt |
 | `JELLYFIN_URL`, `JELLYFIN_API_KEY` | optional, um bisher Gesehenes aus Jellyfin zu übernehmen |
 | `COOKIE_SECURE` | `1`, wenn die App nur über HTTPS läuft |
+| `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` | optional, Anmeldung mit Pocket ID (siehe unten) |
 
 Ohne fertiges Image geht es auch direkt aus dem Ordner: `docker build -t folgenreich .`
 
@@ -50,6 +51,27 @@ Ohne fertiges Image geht es auch direkt aus dem Ordner: `docker build -t folgenr
 **5. Jellyfin.** Webhook-Plugin installieren und den Anweisungen im Konto unter „Jellyfin einrichten“ folgen.
 
 **6. Bisher Gesehenes aus Jellyfin.** Im Konto „Jellyfin prüfen“ wählen. Du siehst zuerst, was fehlt, und ergänzt es dann per Klick. Entfernt wird nichts.
+
+## Anmeldung mit Pocket ID
+
+Folgenreich kann sich über Pocket ID (OpenID Connect) anmelden. Bestehende Konten werden beim ersten Login über den **Benutzernamen** gefunden und danach fest mit dem Pocket-ID-Konto verknüpft.
+
+1. In Pocket ID einen OIDC-Client `Folgenreich` anlegen, Callback-URL `https://folgenreich.example.de/anmelden/pocketid/zurueck`.
+2. Am Container setzen:
+
+| Variable | Wert |
+|---|---|
+| `OIDC_ISSUER` | Adresse von Pocket ID, z. B. `https://id.example.de` |
+| `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` | aus Pocket ID |
+| `OIDC_LABEL` | optional, Text auf dem Knopf |
+| `OIDC_AUTO_REDIRECT` | `1` = Anmeldeseite überspringen |
+| `OIDC_DISABLE_PASSWORD` | `1` = nur noch Pocket ID, kein Passwort-Login |
+| `OIDC_AUTO_CREATE` | `1` = unbekannte Pocket-ID-Nutzer bekommen automatisch ein Konto |
+| `OIDC_ALLOWED_GROUPS` | optional, nur diese Pocket-ID-Gruppen dürfen rein |
+| `OIDC_ADMIN_GROUPS` | optional, neue Konten aus diesen Gruppen werden Admin |
+| `OIDC_REDIRECT_URI` | optional, falls die Rücksprung-Adresse falsch gebildet wird |
+
+Der Name in Folgenreich muss beim ersten Login dem Benutzernamen in Pocket ID entsprechen (Groß- und Kleinschreibung egal). Gibt es noch kein Konto, wird das erste Pocket-ID-Konto Admin.
 
 ## Schlüssel
 
