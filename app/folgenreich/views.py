@@ -204,13 +204,16 @@ def games(tab="sammlung"):
     tabs = _game_tabs(uid)
     if tab not in tabs:
         abort(404)
-    platforms = sorted({p for i in tabs["sammlung"] for p in (i["platforms"] or "").split("|") if p})
+    platforms = sorted({p for i in tabs["sammlung"] for p in (i["platforms"] or "").split(";;") if p})
     all_copies = defaultdict(list)
     for c in db.get().execute("SELECT * FROM copies WHERE user_id=? ORDER BY platform", (uid,)):
         all_copies[c["media_id"]].append(c)
     for item in tabs[tab]:
         item["copy_list"] = all_copies[item["id"]]
         item["spent"] = sum(c["price_cents"] or 0 for c in item["copy_list"])
+        names = list(dict.fromkeys(c["platform"] for c in item["copy_list"]))
+        item["case"] = logic.platform_case(names[0]) if names else None
+        item["more"] = len(names) - 1
     return render_template("games.html", tabs=tabs, tab=tab, items=tabs[tab], platforms=platforms,
                            state_names=logic.GAME_STATE)
 

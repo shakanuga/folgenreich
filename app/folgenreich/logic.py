@@ -10,6 +10,7 @@ Als offen gilt jede erschienene Folge NACH der zuletzt gesehenen. Lücken davor
 Specials (Staffel 0) zählen nie zum Fortschritt.
 """
 import os
+import re
 from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
@@ -298,7 +299,7 @@ GAME_STATE = {"planned": "Auf der Wunschliste", "backlog": "Noch nicht gespielt"
 def game_items(user_id):
     rows = db.get().execute("""SELECT m.*, e.state, e.rating, e.notes, e.added_at, e.last_activity, e.finished_at,
           (SELECT COUNT(*) FROM copies c WHERE c.user_id=e.user_id AND c.media_id=m.id) AS n_copies,
-          (SELECT GROUP_CONCAT(platform,'|') FROM (SELECT DISTINCT platform FROM copies c
+          (SELECT GROUP_CONCAT(platform,';;') FROM (SELECT DISTINCT platform FROM copies c
              WHERE c.user_id=e.user_id AND c.media_id=m.id)) AS platforms
         FROM entries e JOIN media m ON m.id=e.media_id WHERE e.user_id=? AND m.type='game'
         ORDER BY m.title COLLATE NOCASE""", (user_id,)).fetchall()
@@ -407,3 +408,26 @@ def _tally(rows, key):
         if r[key]:
             out[r[key]] = out.get(r[key], 0) + 1
     return out
+
+
+# Hüllen je Plattform: (Muster, Schlüssel für CSS, Text im oberen Streifen). Reihenfolge zählt.
+CASES = [(r"playstation 5|\bps ?5\b", "ps5", "PS5"), (r"playstation 4|\bps ?4\b", "ps4", "PS4"),
+         (r"playstation 3|\bps ?3\b", "ps3", "PS3"), (r"playstation 2|\bps ?2\b", "ps2", "PS2"),
+         (r"vita", "vita", "PS Vita"), (r"psp|playstation portable", "psp", "PSP"),
+         (r"playstation|\bps ?1\b|psx", "ps1", "PlayStation"),
+         (r"series", "xsx", "Xbox Series X|S"), (r"xbox ?one", "xone", "Xbox One"), (r"360", "x360", "Xbox 360"),
+         (r"xbox", "xbox", "Xbox"), (r"switch ?2", "switch2", "Switch 2"), (r"switch", "switch", "Switch"),
+         (r"wii ?u", "wiiu", "Wii U"), (r"\bwii\b", "wii", "Wii"), (r"[23]ds", "n3ds", "3DS"),
+         (r"\bds\b", "nds", "DS"), (r"gamecube", "gc", "GameCube"), (r"64", "cart", "N64"),
+         (r"super nintendo|snes", "cart", "SNES"), (r"advance|gba", "cart", "GBA"),
+         (r"game ?boy color", "cart", "Game Boy Color"), (r"game ?boy", "cart", "Game Boy"),
+         (r"\bnes\b|entertainment system", "cart", "NES"), (r"\bpc\b|windows|steam", "pc", "PC")]
+
+
+def platform_case(name):
+    """Liefert Hüllenart und Beschriftung für eine Plattform."""
+    low = (name or "").lower()
+    for pattern, key, label in CASES:
+        if re.search(pattern, low):
+            return {"key": key, "label": label}
+    return {"key": "other", "label": name} if name else None

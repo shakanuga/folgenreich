@@ -5,9 +5,10 @@
 </span>
 {% endmacro %}
 
-{% macro book(m, badge='') %}
+{% macro book(m, badge='', case=none, more=0) %}
 <span class="slot">
-  <span class="cover" style="--h:{{ '%.2f' % (0.9 + (m.id % 11) / 100) }}">
+  <span class="cover{% if case %} case case-{{ case.key }}{% endif %}" style="--h:{{ '%.2f' % (0.9 + (m.id % 11) / 100) }}">
+    {% if case %}<span class="case-band">{{ case.label }}{% if more %} <small>+{{ more }}</small>{% endif %}</span>{% endif %}
     {% if m.poster %}<img src="{{ m.poster }}" alt="" loading="lazy" referrerpolicy="no-referrer">{% endif %}
     <span class="cover-title">{{ m.title }}</span>
   </span>

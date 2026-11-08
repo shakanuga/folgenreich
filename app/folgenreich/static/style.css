@@ -244,6 +244,33 @@ code { background: var(--raise); padding: 1px 6px; border-radius: 5px; }
   .cover { transition: transform .14s; }
   .book:hover .cover { transform: translateY(-5px); }
 }
+/* Spielehüllen: Rahmen und oberer Streifen in den Farben der Plattform, als Text statt Logo */
+.case { --case: #3a3a3a; --band: #222; --band-ink: #fff; }
+.cover.case { background: var(--case); padding: 18px 4px 4px; border-radius: 4px; }
+.cover.case img { max-height: calc(var(--slot) * var(--h, .96) - 22px); border-radius: 1px; }
+.cover.case:not(:has(img)) .cover-title { color: #fff; inset: 18px 4px 4px; background: rgba(0, 0, 0, .35); }
+.case-band { position: absolute; left: 0; right: 0; top: 0; height: 18px; display: flex; align-items: center; justify-content: center;
+  background: var(--band); color: var(--band-ink); font: 800 .7rem/1 var(--head); letter-spacing: .04em; white-space: nowrap; overflow: hidden; z-index: 1; }
+.slot:has(.case) .badge { top: auto; bottom: 9px; right: 12px; z-index: 2; }
+.case-band small { font-size: .62rem; font-weight: 600; margin-left: 4px; opacity: .8; }
+.case-ps5 { --case: #e9edf3; --band: #fff; --band-ink: #111; }
+.case-ps4 { --case: #1f4eaa; --band: #1f4eaa; --band-ink: #fff; }
+.case-ps3, .case-ps1, .case-psp { --case: #141414; --band: #141414; --band-ink: #e6e6e6; }
+.case-ps2 { --case: #141414; --band: #0f1f5c; --band-ink: #fff; }
+.case-vita { --case: #1d3f99; --band: #0a1c4d; --band-ink: #fff; }
+.case-xsx { --case: #107c10; --band: #0b0b0b; --band-ink: #fff; }
+.case-xone, .case-xbox { --case: #107c10; --band: #107c10; --band-ink: #fff; }
+.case-x360 { --case: #5c9c1a; --band: #f2f2f2; --band-ink: #3d7a00; }
+.case-switch { --case: #e60012; --band: #e60012; --band-ink: #fff; }
+.case-switch2 { --case: #d10f1f; --band: #1c1c1c; --band-ink: #fff; }
+.case-wii { --case: #f4f4f4; --band: #fff; --band-ink: #8c8c8c; box-shadow: 3px 0 7px rgba(0, 0, 0, .4), inset 0 0 0 1px #d8d8d8; }
+.case-wiiu { --case: #1595d8; --band: #1595d8; --band-ink: #fff; }
+.case-n3ds { --case: #efefef; --band: #fff; --band-ink: #c8102e; }
+.case-nds { --case: #efefef; --band: #fff; --band-ink: #222; }
+.case-gc { --case: #2a2a2a; --band: #4a3d8f; --band-ink: #fff; }
+.case-cart { --case: #8d8d8d; --band: #5a5a5a; --band-ink: #fff; }
+.case-pc { --case: #2b2b2b; --band: #000; --band-ink: #fff; }
+.case-other { --case: var(--raise); --band: var(--line); --band-ink: var(--text); }
 .sorter { display: inline-flex; align-items: center; gap: 8px; font-size: .92rem; color: var(--muted); margin-bottom: 14px; }
 .sorter select { font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--line); border-radius: 9px; padding: 6px 8px; }
 .facts { display: grid; grid-template-columns: max-content 1fr; gap: 3px 16px; margin: 1rem 0 0; max-width: 620px; }

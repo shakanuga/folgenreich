@@ -122,3 +122,28 @@ def test_collection_shows_copy_details(client):
                                                         "price": "45", "location": "Regal Flur", "edition": "Steelbook"})
     page = client.get("/spiele").get_data(as_text=True)
     assert "Nintendo Switch, Modul, Gut, Steelbook" in page and "Regal Flur" in page and "45,00 €" in page and "Adventure" in page
+
+
+import pytest as _pt
+
+
+@_pt.mark.parametrize("name,key", [("Wii", "wii"), ("Wii U", "wiiu"), ("PlayStation 3", "ps3"), ("PlayStation", "ps1"),
+    ("Nintendo Switch 2", "switch2"), ("Nintendo Switch", "switch"), ("New Nintendo 2DS", "n3ds"), ("Nintendo DS", "nds"),
+    ("Xbox Series X|S", "xsx"), ("Xbox 360", "x360"), ("PC (Microsoft Windows)", "pc"), ("Nintendo 64", "cart"),
+    ("Sega Dreamcast", "other")])
+def test_platform_case(name, key):
+    assert logic.platform_case(name)["key"] == key
+
+
+def test_shelf_shows_case(client):
+    STATE["igdb"] = [ZELDA]
+    add(client)
+    client.post(f"/m/{mid()}/exemplar", data={"platform": "Wii U"})
+    page = client.get("/spiele").get_data(as_text=True)
+    assert "case case-switch" in page and "+1" in page
+
+
+def test_platform_with_bar_stays_whole_in_filter(client):
+    client.post("/spiel-von-hand", data={"title": "Forza", "platform": "Xbox Series X|S"})
+    page = client.get("/spiele").get_data(as_text=True)
+    assert 'data-sub="Xbox Series X|S"' in page and '>S</button>' not in page

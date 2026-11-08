@@ -102,7 +102,7 @@ function applyFilter() {
   const sub = chip ? chip.dataset.sub : '';
   $$('[data-list] > *').forEach(el => {
     const okText = !q || (el.dataset.title || '').toLowerCase().includes(q);
-    const okSub = !sub || (el.dataset.sub || '').split('|').includes(sub);
+    const okSub = !sub || (el.dataset.sub || '').split(';;').includes(sub);
     el.hidden = !(okText && okSub);
   });
 }

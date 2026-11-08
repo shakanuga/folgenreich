@@ -19,7 +19,7 @@
 <div class="wall" data-list>{% for m in items %}
   <a href="/m/{{ m.id }}" class="book game" data-title="{{ m.title }} {{ m.genres or '' }}" data-sub="{{ m.platforms or '' }}"
      data-sort-name="{{ m.title }}" data-sort-year="{{ m.year or 0 }}" data-sort-added="{{ m.added_at }}" data-sort-rating="{{ m.rating or 0 }}" data-sort-spent="{{ m.spent }}">
-    {{ ui.book(m, 'Durch' if m.state == 'done' else ('Spiele ich' if m.state == 'playing' else '')) }}
+    {{ ui.book(m, 'Durch' if m.state == 'done' else ('Spiele ich' if m.state == 'playing' else ''), m.case, m.more) }}
     <span class="tag"><b>{{ m.title }}</b>
       {% for c in m.copy_list %}<small>{{ [c.platform, c.format, c.condition, c.edition]|select|join(', ') }}</small>{% endfor %}
       <small>{{ [m.year, m.genres]|select|join(', ') }}</small>
