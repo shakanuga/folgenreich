@@ -3,7 +3,9 @@ name: Updates prüfen & mergen
 # Läuft bei jedem Pull Request von Dependabot (Paket-, Basis-Image- und Actions-Updates).
 #   1. prüfen: Docker-Image bauen, Tests im Image, Container starten
 #   2. mergen: ist alles grün, wird der PR automatisch gemergt (squash) und danach das Docker-Image neu veröffentlicht.
-# Schlägt eine Prüfung fehl, bleibt der PR offen und GitHub schickt eine Mail.
+# Klappt etwas nicht, bleibt der PR offen und es gibt EIN Issue "⚠️ Automatische Updates
+# brauchen dich" (dir zugewiesen → genau dann kommt eine Mail). Weitere Probleme landen als
+# Kommentar im selben Issue. Wenn alles erledigt ist: Issue schließen.
 #
 # Optional: Fine-grained Token als *Dependabot*-Secret AUTOMERGE_TOKEN
 # (Rechte für dieses Repo: Contents, Pull requests, Workflows – je "Read and write").
@@ -17,6 +19,7 @@ permissions:
   contents: write
   pull-requests: write
   actions: write
+  issues: write
 
 concurrency:
   group: auto-updates-${{ github.event.pull_request.number }}
@@ -93,6 +96,8 @@ jobs:
   mergen:
     needs: pruefen
     runs-on: ubuntu-latest
+    outputs:
+      liegen_lassen: ${{ steps.gate.outputs.ok == 'false' }}
     env:
       HAS_PAT: ${{ secrets.AUTOMERGE_TOKEN != '' }}
       PR: ${{ github.event.pull_request.number }}
@@ -105,11 +110,9 @@ jobs:
       - name: Große Versionssprünge ggf. liegen lassen
         id: gate
         env:
-          GH_TOKEN: ${{ github.token }}
           TYPE: ${{ steps.meta.outputs.update-type }}
         run: |
           if [ "$TYPE" = "version-update:semver-major" ] && [ "$MAJOR_AUTOMERGE" != "true" ]; then
-            gh pr comment "$PR" -R "$GITHUB_REPOSITORY" --body "Prüfungen sind grün, aber das ist ein großer Versionssprung (major) – der wird hier nicht automatisch gemergt. Bitte kurz anschauen und selbst mergen."
             echo "ok=false" >> "$GITHUB_OUTPUT"
           else
             echo "ok=true" >> "$GITHUB_OUTPUT"
@@ -134,4 +137,48 @@ jobs:
         if: steps.gate.outputs.ok == 'true' && env.HAS_PAT != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh workflow run docker.yml -R "$GITHUB_REPOSITORY" --ref ${{ github.event.pull_request.base.ref }}
+        run: |
+          gh workflow run docker.yml -R "$GITHUB_REPOSITORY" --ref "${{ github.event.pull_request.base.ref }}"
+          # Build abwarten – schlägt er fehl, wird das unten als Problem gemeldet
+          sleep 15
+          id=$(gh run list -R "$GITHUB_REPOSITORY" -w docker.yml -e workflow_dispatch -L 1 --json databaseId --jq '.[0].databaseId')
+          gh run watch "$id" -R "$GITHUB_REPOSITORY" --exit-status --interval 30 > /dev/null
+
+  # Meldet sich nur, wenn etwas nicht automatisch geklappt hat.
+  melden:
+    needs: [pruefen, mergen]
+    if: >-
+      always() && (needs.pruefen.result == 'failure' || needs.mergen.result == 'failure'
+      || needs.mergen.outputs.liegen_lassen == 'true')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Problem im Sammel-Issue melden
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          PR_TITEL: ${{ github.event.pull_request.title }}
+          LOG: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          GRUND: >-
+            ${{ needs.mergen.outputs.liegen_lassen == 'true' && 'großer Versionssprung – bitte anschauen und selbst mergen'
+            || needs.pruefen.result == 'failure' && 'Prüfung fehlgeschlagen (Tests, Build oder Starttest)'
+            || 'Mergen oder Image-Neubau hat nicht geklappt' }}
+        run: |
+          set -euo pipefail
+          R="$GITHUB_REPOSITORY"
+          TITEL="⚠️ Automatische Updates brauchen dich"
+          ZEILE="- [ ] #$PR – $PR_TITEL: **$GRUND** ([Log]($LOG))"
+          nr=$(gh api "repos/$R/issues?state=open&per_page=100" | jq -r --arg t "$TITEL" '[.[] | select(.title == $t and (.pull_request | not))][0].number // empty')
+          if [ -z "$nr" ]; then
+            body=$(printf 'Hier landet nur, was bei den automatischen Updates **nicht** von selbst geklappt hat.\nWenn alles erledigt ist, das Issue einfach schließen.\n\n%s\n' "$ZEILE")
+            gh api "repos/$R/issues" -f title="$TITEL" -f body="$body" -f "assignees[]=$GITHUB_REPOSITORY_OWNER" > /dev/null
+            echo "Neues Issue angelegt."
+          else
+            # Gleichen PR nicht mehrfach melden (z. B. nach jedem Rebase)
+            bekannt=$( { gh api "repos/$R/issues/$nr" --jq .body; gh api "repos/$R/issues/$nr/comments?per_page=100" --jq '.[].body'; } )
+            if grep -qF "#$PR –" <<<"$bekannt"; then
+              echo "PR #$PR steht schon in Issue #$nr."
+            else
+              gh api "repos/$R/issues/$nr/comments" -f body="$ZEILE" > /dev/null
+              echo "In Issue #$nr ergänzt."
+            fi
+          fi
