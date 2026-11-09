@@ -1,7 +1,7 @@
 name: Updates prüfen & mergen
 
 # Läuft bei jedem Pull Request von Dependabot (Paket-, Basis-Image- und Actions-Updates).
-#   1. prüfen: Tests, Docker-Image bauen, Container starten
+#   1. prüfen: Docker-Image bauen, Tests im Image, Container starten
 #   2. mergen: ist alles grün, wird der PR automatisch gemergt (squash) und danach das Docker-Image neu veröffentlicht.
 # Schlägt eine Prüfung fehl, bleibt der PR offen und GitHub schickt eine Mail.
 #
@@ -35,21 +35,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Python-Version aus dem Dockerfile lesen
-        id: py
-        run: echo "version=$(grep -oP '^FROM python:\K[0-9]+\.[0-9]+' Dockerfile | head -1)" >> "$GITHUB_OUTPUT"
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: ${{ steps.py.outputs.version }}
-
-      - name: Tests
-        run: |
-          pip install -r app/requirements.txt pytest
-          python -m pytest -q tests
-
       - name: Docker-Image bauen
         run: docker build --pull -t pr-image:test .
+
+      - name: Tests im gebauten Image (gleiches Python, gleiche Pakete, gleiche Systemprogramme)
+        run: |
+          docker run --rm -u 0 -e HOME=/tmp -v "$PWD:/src" -w /src --entrypoint sh pr-image:test \
+            -c 'pip install -q pytest && python -m pytest -q tests'
 
       - name: Starttest – Container muss hochkommen
         env:
@@ -130,7 +122,7 @@ jobs:
           ACTIONS_TOKEN: ${{ github.token }}
           SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          if ! gh pr merge "$PR" -R "$GITHUB_REPOSITORY" --squash --match-head-commit "$SHA"; then
+          if ! gh api -X PUT "repos/$GITHUB_REPOSITORY/pulls/$PR/merge" -f merge_method=squash -f sha="$SHA"; then
             GH_TOKEN="$ACTIONS_TOKEN" gh pr comment "$PR" -R "$GITHUB_REPOSITORY" --body "Alle Prüfungen sind grün, aber automatisch mergen ging nicht. Meist liegt das daran, dass der PR Dateien unter \`.github/workflows/\` ändert – das darf nur ein Token mit Workflow-Recht (Dependabot-Secret \`AUTOMERGE_TOKEN\`, siehe Kommentar oben in .github/workflows/auto-updates.yml). Bitte einmal von Hand mergen."
             exit 1
           fi
@@ -142,4 +134,4 @@ jobs:
         if: steps.gate.outputs.ok == 'true' && env.HAS_PAT != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh workflow run docker.yml --ref ${{ github.event.pull_request.base.ref }}
+        run: gh workflow run docker.yml -R "$GITHUB_REPOSITORY" --ref ${{ github.event.pull_request.base.ref }}
