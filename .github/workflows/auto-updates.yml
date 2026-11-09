@@ -1,0 +1,145 @@
+name: Updates prüfen & mergen
+
+# Läuft bei jedem Pull Request von Dependabot (Paket-, Basis-Image- und Actions-Updates).
+#   1. prüfen: Tests, Docker-Image bauen, Container starten
+#   2. mergen: ist alles grün, wird der PR automatisch gemergt (squash) und danach das Docker-Image neu veröffentlicht.
+# Schlägt eine Prüfung fehl, bleibt der PR offen und GitHub schickt eine Mail.
+#
+# Optional: Fine-grained Token als *Dependabot*-Secret AUTOMERGE_TOKEN
+# (Rechte für dieses Repo: Contents, Pull requests, Workflows – je "Read and write").
+# Nur damit lassen sich auch Updates mergen, die Dateien unter .github/workflows/
+# ändern (Updates der GitHub Actions selbst) – das normale Actions-Token darf das nicht.
+
+on:
+  pull_request:
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+concurrency:
+  group: auto-updates-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  # "false" = große Versionssprünge (major) bleiben zum Anschauen liegen
+  MAJOR_AUTOMERGE: "true"
+
+jobs:
+  pruefen:
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Python-Version aus dem Dockerfile lesen
+        id: py
+        run: echo "version=$(grep -oP '^FROM python:\K[0-9]+\.[0-9]+' Dockerfile | head -1)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ steps.py.outputs.version }}
+
+      - name: Tests
+        run: |
+          pip install -r app/requirements.txt pytest
+          python -m pytest -q tests
+
+      - name: Docker-Image bauen
+        run: docker build --pull -t pr-image:test .
+
+      - name: Starttest – Container muss hochkommen
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -uo pipefail
+          # Startet ein Image und wartet, bis der Healthcheck "healthy" meldet
+          # (ohne Healthcheck: läuft er nach 20 s noch?).
+          starten() {
+            local img="$1" args=() cid status
+            if [ -n "$(docker image inspect -f '{{if .Config.Healthcheck}}ja{{end}}' "$img")" ]; then
+              args=(--health-interval=3s --health-timeout=5s --health-retries=20 --health-start-period=0s)
+            fi
+            cid=$(docker run -d "${args[@]}" "$img")
+            if [ ${#args[@]} -eq 0 ]; then
+              sleep 20
+              status=$(docker inspect -f '{{.State.Status}}' "$cid")
+            else
+              for _ in $(seq 1 40); do
+                status=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$cid")
+                case "$status" in healthy|unhealthy|exited|dead) break ;; esac
+                sleep 3
+              done
+            fi
+            echo "--- $img: $status"
+            docker logs "$cid" 2>&1 | tail -n 40
+            docker rm -f "$cid" >/dev/null
+            [ "$status" = healthy ] || [ "$status" = running ]
+          }
+
+          if starten pr-image:test; then
+            echo "✅ Container mit dem Update läuft."
+            exit 0
+          fi
+
+          # Kommt er nicht hoch, mit dem Stand vor dem Update vergleichen: Fehlt im
+          # Test nur eine Einstellung (z. B. Login), geht es vorher auch nicht – dann
+          # ist das kein Rückschritt durch das Update.
+          echo "Container mit dem Update kommt nicht hoch – Gegenprobe mit dem alten Stand …"
+          git fetch -q --depth 1 origin "$BASE_SHA"
+          git worktree add -q --detach /tmp/basis FETCH_HEAD
+          docker build -q -t basis-image:test /tmp/basis
+          if starten basis-image:test; then
+            echo "::error::Vorher lief der Container, mit dem Update nicht mehr."
+            exit 1
+          fi
+          echo "::warning::Auch ohne Update kommt der Container im Test nicht hoch – kein Rückschritt durch das Update."
+
+  mergen:
+    needs: pruefen
+    runs-on: ubuntu-latest
+    env:
+      HAS_PAT: ${{ secrets.AUTOMERGE_TOKEN != '' }}
+      PR: ${{ github.event.pull_request.number }}
+    steps:
+      - id: meta
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: ${{ github.token }}
+
+      - name: Große Versionssprünge ggf. liegen lassen
+        id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TYPE: ${{ steps.meta.outputs.update-type }}
+        run: |
+          if [ "$TYPE" = "version-update:semver-major" ] && [ "$MAJOR_AUTOMERGE" != "true" ]; then
+            gh pr comment "$PR" -R "$GITHUB_REPOSITORY" --body "Prüfungen sind grün, aber das ist ein großer Versionssprung (major) – der wird hier nicht automatisch gemergt. Bitte kurz anschauen und selbst mergen."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Mergen
+        if: steps.gate.outputs.ok == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.AUTOMERGE_TOKEN || github.token }}
+          ACTIONS_TOKEN: ${{ github.token }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if ! gh pr merge "$PR" -R "$GITHUB_REPOSITORY" --squash --match-head-commit "$SHA"; then
+            GH_TOKEN="$ACTIONS_TOKEN" gh pr comment "$PR" -R "$GITHUB_REPOSITORY" --body "Alle Prüfungen sind grün, aber automatisch mergen ging nicht. Meist liegt das daran, dass der PR Dateien unter \`.github/workflows/\` ändert – das darf nur ein Token mit Workflow-Recht (Dependabot-Secret \`AUTOMERGE_TOKEN\`, siehe Kommentar oben in .github/workflows/auto-updates.yml). Bitte einmal von Hand mergen."
+            exit 1
+          fi
+
+      # Ein Merge mit dem Actions-Token löst keinen Push-Workflow aus, ein
+      # workflow_dispatch schon – deshalb wird das Image hier direkt neu gebaut.
+      # (Mit AUTOMERGE_TOKEN passiert das über den normalen Push.)
+      - name: Image neu veröffentlichen
+        if: steps.gate.outputs.ok == 'true' && env.HAS_PAT != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run docker.yml --ref ${{ github.event.pull_request.base.ref }}
