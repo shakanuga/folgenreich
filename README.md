@@ -5,6 +5,9 @@ Selbst gehosteter Tracker für Serien, Animes, Filme, Bücher und Spiele. Mehrer
 - **Technik:** Python 3.12, Flask, SQLite, Gunicorn, ohne Build-Schritt
 - **Image:** `ghcr.io/shakanuga/folgenreich:latest`, sobald das Repo auf GitHub liegt
 
+![Folgenreich – Startseite](docs/screenshots/start.png)
+
+
 ## Was die App macht
 
 | Bereich | Funktion |
@@ -18,6 +21,18 @@ Selbst gehosteter Tracker für Serien, Animes, Filme, Bücher und Spiele. Mehrer
 | **Jellyfin** | Gesehene Folgen und Filme werden automatisch abgehakt. |
 
 Aktiv, Warten und Archiv sind nirgends gespeichert. Die App berechnet sie bei jedem Aufruf aus dem Fortschritt und den TMDB-Daten (`logic.py`). Laufende Serien werden alle 12 Stunden abgeglichen, beendete wöchentlich.
+
+## Screenshots
+
+<table>
+<tr><td width="50%"><img src="docs/screenshots/serien.png" alt="Serien: Aktiv, Warten, Archiv, Merkliste"><br><sub>Serien: Aktiv, Warten, Archiv, Merkliste</sub></td><td width="50%"><img src="docs/screenshots/detail.png" alt="Serie mit Staffeln und Folgen"><br><sub>Serie mit Staffeln und Folgen</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/buecher.png" alt="Bücher: Mein Regal"><br><sub>Bücher: Mein Regal</sub></td><td width="50%"><img src="docs/screenshots/spiele.png" alt="Spiele-Sammlung nach Plattform"><br><sub>Spiele-Sammlung nach Plattform</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/spiele-statistik.png" alt="Spiele-Statistik"><br><sub>Spiele-Statistik</sub></td><td width="50%"><img src="docs/screenshots/filme.png" alt="Filme"><br><sub>Filme</sub></td></tr>
+</table>
+
+<p align="center"><img src="docs/screenshots/handy.png" alt="Folgenreich auf dem Handy" width="480"></p>
+
+<sub>Screenshots mit erfundenen Demo-Daten und Platzhalter-Covern.</sub>
 
 ## Installation auf Unraid
 
